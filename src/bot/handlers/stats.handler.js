@@ -3,45 +3,54 @@ const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   getCurrentMonthBalance,
   getCurrentMonthIncomeStats,
-  getCurrentMonthStats,
 } = require('../../services/stats.service');
+const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { formatMoney } = require('../../utils/money');
 
-function formatStats(rows) {
+function formatCategoryRows(rows, emptyText) {
   if (rows.length === 0) {
-    return 'За текущий месяц расходов пока нет.';
+    return {
+      lines: [emptyText],
+      totals: [],
+    };
   }
 
   const totalsByCurrency = new Map();
   const lines = rows.map((row) => {
     const amount = Number(row._sum.amount || 0);
-    const cashback = Number(row._sum.cashback || 0);
-    const netAmount = amount - cashback;
-    const total = totalsByCurrency.get(row.currency) || {
-      amount: 0,
-      cashback: 0,
-      netAmount: 0,
-    };
+    const total = totalsByCurrency.get(row.currency) || 0;
 
-    total.amount += amount;
-    total.cashback += cashback;
-    total.netAmount += netAmount;
-    totalsByCurrency.set(row.currency, total);
+    totalsByCurrency.set(row.currency, total + amount);
 
-    return `${row.category}: ${formatMoney(netAmount, row.currency)} (расходы ${formatMoney(
-      amount,
-      row.currency
-    )}, кешбек ${formatMoney(cashback, row.currency)})`;
+    return `${row.category}: ${formatMoney(amount, row.currency)}`;
   });
 
-  const totalLines = Array.from(totalsByCurrency.entries()).map(([currency, total]) => {
-    return `${formatMoney(total.netAmount, currency)} = ${formatMoney(
-      total.amount,
-      currency
-    )} - кешбек ${formatMoney(total.cashback, currency)}`;
+  const totalLines = Array.from(totalsByCurrency.entries()).map(([currency, amount]) => {
+    return formatMoney(amount, currency);
   });
 
-  return `Расходы за текущий месяц:\n\n${lines.join('\n')}\n\nИтого:\n${totalLines.join('\n')}`;
+  return { lines, totals: totalLines };
+}
+
+function formatStats({ expenses, incomes }) {
+  if (expenses.length === 0 && incomes.length === 0) {
+    return 'За текущий месяц операций пока нет.';
+  }
+
+  const expenseStats = formatCategoryRows(expenses, 'Расходов пока нет.');
+  const incomeStats = formatCategoryRows(incomes, 'Доходов пока нет.');
+
+  return [
+    'Статистика за текущий месяц',
+    '',
+    'Расходы:',
+    expenseStats.lines.join('\n'),
+    ...(expenseStats.totals.length > 0 ? ['', `Итого расходов: ${expenseStats.totals.join(', ')}`] : []),
+    '',
+    'Доходы:',
+    incomeStats.lines.join('\n'),
+    ...(incomeStats.totals.length > 0 ? ['', `Итого доходов: ${incomeStats.totals.join(', ')}`] : []),
+  ].join('\n');
 }
 
 function formatIncomeStats(rows) {
@@ -66,26 +75,42 @@ function formatIncomeStats(rows) {
   return `Доходы за текущий месяц:\n\n${lines.join('\n')}\n\nИтого:\n${totalLines.join('\n')}`;
 }
 
-function sumRowsByCurrency(rows, { subtractCashback = false } = {}) {
+function sumRowsByCurrency(rows) {
   const totals = new Map();
 
   rows.forEach((row) => {
     const amount = Number(row._sum.amount || 0);
-    const cashback = subtractCashback ? Number(row._sum.cashback || 0) : 0;
-    const value = amount - cashback;
 
-    totals.set(row.currency, (totals.get(row.currency) || 0) + value);
+    totals.set(row.currency, (totals.get(row.currency) || 0) + amount);
   });
 
   return totals;
 }
 
-function formatBalance({ expenses, incomes }) {
+function hasUsdTotals(...totalsMaps) {
+  return totalsMaps.some((totals) => Number(totals.get('USD') || 0) !== 0);
+}
+
+function convertTotalsToRub(totals, usdRate) {
+  return Array.from(totals.entries()).reduce((sum, [currency, amount]) => {
+    if (currency === 'RUB') {
+      return sum + amount;
+    }
+
+    if (currency === 'USD') {
+      return sum + amount * usdRate.value;
+    }
+
+    return sum;
+  }, 0);
+}
+
+async function formatBalance({ expenses, incomes }) {
   if (expenses.length === 0 && incomes.length === 0) {
     return 'За текущий месяц операций пока нет.';
   }
 
-  const expenseTotals = sumRowsByCurrency(expenses, { subtractCashback: true });
+  const expenseTotals = sumRowsByCurrency(expenses);
   const incomeTotals = sumRowsByCurrency(incomes);
   const currencies = Array.from(new Set([...expenseTotals.keys(), ...incomeTotals.keys()])).sort();
 
@@ -100,12 +125,42 @@ function formatBalance({ expenses, incomes }) {
     )} - расходы ${formatMoney(expense, currency)}`;
   });
 
-  return `Баланс за текущий месяц:\n\n${lines.join('\n')}`;
+  const resultLines = ['Баланс за текущий месяц', '', ...lines];
+
+  if (!hasUsdTotals(expenseTotals, incomeTotals)) {
+    const incomeRub = incomeTotals.get('RUB') || 0;
+    const expenseRub = expenseTotals.get('RUB') || 0;
+
+    resultLines.push(
+      '',
+      `Итого доходов в RUB: ${formatMoney(incomeRub, 'RUB')}`,
+      `Итоговый баланс в RUB: ${formatMoney(incomeRub - expenseRub, 'RUB')}`
+    );
+    return resultLines.join('\n');
+  }
+
+  try {
+    const usdRate = await getUsdToRubRate();
+    const incomeRub = convertTotalsToRub(incomeTotals, usdRate);
+    const expenseRub = convertTotalsToRub(expenseTotals, usdRate);
+
+    resultLines.push(
+      '',
+      `Итого доходов в RUB: ${formatMoney(incomeRub, 'RUB')}`,
+      `Итоговый баланс в RUB: ${formatMoney(incomeRub - expenseRub, 'RUB')}`,
+      `Курс USD: ${formatMoney(usdRate.value, 'RUB')}${usdRate.date ? ` (${usdRate.date}, ${usdRate.source})` : ''}`
+    );
+  } catch (error) {
+    console.error('[stats:balance] failed to fetch USD rate', error);
+    resultLines.push('', 'Итого в RUB не посчитал: не удалось получить текущий курс USD.');
+  }
+
+  return resultLines.join('\n');
 }
 
 async function sendMonthStats(ctx) {
   const user = await upsertTelegramUser(ctx.from);
-  const stats = await getCurrentMonthStats(user.id);
+  const stats = await getCurrentMonthBalance(user.id);
 
   await ctx.reply(formatStats(stats));
 }
@@ -114,7 +169,7 @@ async function sendMonthBalance(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   const balance = await getCurrentMonthBalance(user.id);
 
-  await ctx.reply(formatBalance(balance));
+  await ctx.reply(await formatBalance(balance));
 }
 
 async function sendMonthIncomeStats(ctx) {

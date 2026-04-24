@@ -24,6 +24,10 @@ function getHelpText() {
     '/balance - баланс за текущий месяц',
     '/income - доходы за текущий месяц',
     '/add_income - добавить доход',
+    '/reminder 20:00 - ежедневное напоминание о тратах',
+    '/reminder - статус напоминания',
+    '/reminder_off - выключить напоминание',
+    '/reminder_on - включить напоминание снова',
     '/edit - редактировать свою операцию',
     '/delete - удалить свою операцию',
     '/stats - статистика за текущий месяц',
@@ -53,9 +57,8 @@ function getHelpText() {
     '',
     'Формат дохода:',
     'зарплата 150000',
+    'кешбек 250',
     'фриланс проект 500 usd',
-    '',
-    'После расхода бот спросит кешбек: ответьте "нет", суммой или процентом 5%.',
   ].join('\n');
 }
 
@@ -142,7 +145,7 @@ function registerMenuHandlers(bot) {
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
     await ctx.reply(
-      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000 или project 500 usd`
+      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd`
     );
   });
 

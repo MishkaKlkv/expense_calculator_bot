@@ -78,7 +78,7 @@ async function transcribeTelegramVoice(ctx, fileId) {
         model: env.openaiTranscriptionModel,
         language: 'ru',
         prompt:
-          'Пользователь диктует короткую запись о расходе или кешбеке. Примеры: перекресток 580, кофе 300, нет, кешбек 250.',
+          'Пользователь диктует короткую запись о расходе или доходе. Примеры: перекресток 580, кофе 300, зарплата 150000, кешбек 250.',
       });
     } catch (error) {
       if (error.status === 429 && error.code === 'insufficient_quota') {

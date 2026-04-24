@@ -16,13 +16,11 @@ const { formatMoney } = require('../../utils/money');
 const { showMainMenu } = require('./menu.handler');
 
 function formatExpenseLine(expense, index) {
-  const cashback = Number(expense.cashback || 0);
-  const cashbackText = cashback > 0 ? `, кешбек ${formatMoney(cashback, expense.currency)}` : '';
   const typeText = expense.type === 'INCOME' ? 'доход' : 'расход';
 
   return `${index + 1}. ${typeText} | ${formatDateTime(expense.expenseDate)} | ${expense.category} | ${
     expense.description
-  } | ${formatMoney(expense.amount, expense.currency)}${cashbackText}`;
+  } | ${formatMoney(expense.amount, expense.currency)}`;
 }
 
 async function showDeleteExpenseList(ctx) {

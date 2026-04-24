@@ -70,30 +70,15 @@ function formatStats(rows) {
   const totalsByCurrency = new Map();
   const lines = rows.map((row) => {
     const amount = Number(row._sum.amount || 0);
-    const cashback = Number(row._sum.cashback || 0);
-    const netAmount = amount - cashback;
-    const total = totalsByCurrency.get(row.currency) || {
-      amount: 0,
-      cashback: 0,
-      netAmount: 0,
-    };
+    const total = totalsByCurrency.get(row.currency) || 0;
 
-    total.amount += amount;
-    total.cashback += cashback;
-    total.netAmount += netAmount;
-    totalsByCurrency.set(row.currency, total);
+    totalsByCurrency.set(row.currency, total + amount);
 
-    return `${row.category}: ${formatMoney(netAmount, row.currency)} (расходы ${formatMoney(
-      amount,
-      row.currency
-    )}, кешбек ${formatMoney(cashback, row.currency)})`;
+    return `${row.category}: ${formatMoney(amount, row.currency)}`;
   });
 
-  const totalLines = Array.from(totalsByCurrency.entries()).map(([currency, total]) => {
-    return `${formatMoney(total.netAmount, currency)} = ${formatMoney(
-      total.amount,
-      currency
-    )} - кешбек ${formatMoney(total.cashback, currency)}`;
+  const totalLines = Array.from(totalsByCurrency.entries()).map(([currency, amount]) => {
+    return formatMoney(amount, currency);
   });
 
   return `Семейные расходы за текущий месяц:\n\n${lines.join(
@@ -107,12 +92,9 @@ function formatRecentExpenses(expenses) {
   }
 
   const lines = expenses.map((expense) => {
-    const cashback = Number(expense.cashback || 0);
-    const cashbackText = cashback > 0 ? ` | кешбек ${formatMoney(cashback, expense.currency)}` : '';
-
     return `${formatDateTime(expense.expenseDate)} | ${getDisplayName(expense.user)} | ${
       expense.category
-    } | ${expense.description} | ${formatMoney(expense.amount, expense.currency)}${cashbackText}`;
+    } | ${expense.description} | ${formatMoney(expense.amount, expense.currency)}`;
   });
 
   return `Последние семейные траты:\n\n${lines.join('\n')}`;

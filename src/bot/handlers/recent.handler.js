@@ -10,13 +10,10 @@ function formatRecentExpenses(expenses) {
   }
 
   const lines = expenses.map((expense) => {
-    const cashback = Number(expense.cashback || 0);
-    const cashbackText = cashback > 0 ? ` | кешбек ${formatMoney(cashback, expense.currency)}` : '';
-
     return `${formatDateTime(expense.expenseDate)} | ${expense.category} | ${expense.description} | ${formatMoney(
       expense.amount,
       expense.currency
-    )}${cashbackText}`;
+    )}`;
   });
 
   return `Последние траты:\n\n${lines.join('\n')}`;

@@ -9,7 +9,6 @@ const { inferCategory } = require('../../services/autoCategory.service');
 const {
   buildPendingExpenseFromMessage,
   createExpenseFromPending,
-  parseCashbackForExpense,
 } = require('../../services/expense.service');
 const {
   buildPendingIncomeFromMessage,
@@ -110,11 +109,18 @@ async function handleExpenseInput(ctx, inputText) {
       return;
     }
 
-    await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_CASHBACK', {
+    const saved = await createExpenseFromPending({
+      user,
       pendingExpense: result.pendingExpense,
     });
+
+    await resetDialogState(user.id);
     await ctx.reply(
-      `Категория определена: ${result.pendingExpense.category}\nБыл ли кешбек? Отправьте "нет", сумму или процент, например: 5%`
+      `Сохранил: ${saved.expense.description}, ${formatMoney(
+        saved.expense.amount,
+        saved.expense.currency
+      )}, ${saved.expense.category}`,
+      afterExpenseKeyboard(saved.expense.category)
     );
     return;
   }
@@ -128,31 +134,9 @@ async function handleExpenseInput(ctx, inputText) {
       return;
     }
 
-    const cashbackResult = parseCashbackForExpense({
-      messageText: inputText,
-      currency: pendingExpense.currency,
-      amount: pendingExpense.amount,
-    });
-
-    if (!cashbackResult.ok) {
-      if (cashbackResult.reason === 'CURRENCY_MISMATCH') {
-        await ctx.reply('Кешбек должен быть в той же валюте, что и расход.');
-        return;
-      }
-
-      if (cashbackResult.reason === 'CASHBACK_TOO_HIGH') {
-        await ctx.reply('Кешбек не может быть больше суммы расхода.');
-        return;
-      }
-
-      await ctx.reply('Отправьте "нет" или сумму кешбека, например: 250');
-      return;
-    }
-
     const result = await createExpenseFromPending({
       user,
       pendingExpense,
-      cashback: cashbackResult.cashback,
     });
 
     await resetDialogState(user.id);
@@ -160,9 +144,7 @@ async function handleExpenseInput(ctx, inputText) {
       `Сохранил: ${result.expense.description}, ${formatMoney(
         result.expense.amount,
         result.expense.currency
-      )}, кешбек ${formatMoney(result.expense.cashback, result.expense.currency)}, ${
-        result.expense.category
-      }`,
+      )}, ${result.expense.category}`,
       afterExpenseKeyboard(result.expense.category)
     );
     return;
@@ -186,10 +168,19 @@ async function handleExpenseInput(ctx, inputText) {
     return;
   }
 
-  await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_CASHBACK', {
+  const saved = await createExpenseFromPending({
+    user,
     pendingExpense: result.pendingExpense,
   });
-  await ctx.reply('Был ли кешбек? Отправьте "нет", сумму или процент, например: 5%');
+
+  await resetDialogState(user.id);
+  await ctx.reply(
+    `Сохранил: ${saved.expense.description}, ${formatMoney(
+      saved.expense.amount,
+      saved.expense.currency
+    )}, ${saved.expense.category}`,
+    afterExpenseKeyboard(saved.expense.category)
+  );
 }
 
 function registerExpenseHandlers(bot) {
@@ -211,7 +202,7 @@ function registerExpenseHandlers(bot) {
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
     await ctx.reply(
-      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000 или project 500 usd`
+      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd`
     );
   });
 

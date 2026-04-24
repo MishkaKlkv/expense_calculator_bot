@@ -16,7 +16,7 @@ const {
 } = require('../utils/date');
 
 function getNetAmount(row) {
-  return Number(row._sum.amount || 0) - Number(row._sum.cashback || 0);
+  return Number(row._sum.amount || 0);
 }
 
 async function getCategoryStatsForRange({ userId, userIds, range }) {
@@ -88,8 +88,6 @@ function buildExportRows(expenses) {
     category: expense.category,
     description: expense.description,
     amount: Number(expense.amount),
-    cashback: Number(expense.cashback || 0),
-    net_amount: Number(expense.amount) - Number(expense.cashback || 0),
     currency: expense.currency,
   }));
 }
@@ -117,14 +115,12 @@ async function exportMonthExpenses({ userId, userIds, format = 'csv' }) {
       { header: 'category', key: 'category', width: 18 },
       { header: 'description', key: 'description', width: 32 },
       { header: 'amount', key: 'amount', width: 12 },
-      { header: 'cashback', key: 'cashback', width: 12 },
-      { header: 'net_amount', key: 'net_amount', width: 14 },
       { header: 'currency', key: 'currency', width: 10 },
     ];
     sheet.addRows(rows);
     await workbook.xlsx.writeFile(filePath);
   } else {
-    const headers = ['date', 'user', 'category', 'description', 'amount', 'cashback', 'net_amount', 'currency'];
+    const headers = ['date', 'user', 'category', 'description', 'amount', 'currency'];
     const csvRows = [
       headers.join(','),
       ...rows.map((row) =>

@@ -48,7 +48,6 @@ function getFieldPrompt(field, type = 'EXPENSE') {
     category: `Отправьте новую категорию текстом, например: ${categoryExample}`,
     description: 'Отправьте новое описание.',
     amount: 'Отправьте новую сумму, например: 580 или 10 usd',
-    cashback: 'Отправьте новый кешбек: нет, 250 или 5%',
   };
 
   return prompts[field] || 'Отправьте новое значение.';
@@ -59,8 +58,6 @@ function getEditErrorText(reason) {
     UNKNOWN_CATEGORY: 'Не знаю такую категорию. Отправьте название одной из категорий.',
     EMPTY_DESCRIPTION: 'Описание не должно быть пустым.',
     INVALID_AMOUNT: 'Не понял сумму. Пример: 580 или 10 usd',
-    CASHBACK_TOO_HIGH: 'Кешбек не может быть больше суммы расхода.',
-    CURRENCY_MISMATCH: 'Кешбек должен быть в той же валюте, что и расход.',
     PARSE_ERROR: 'Не понял значение. Попробуйте еще раз.',
     NOT_FOUND: 'Не нашел эту операцию или у вас нет прав ее редактировать.',
   };
@@ -98,7 +95,7 @@ function registerEditExpenseHandlers(bot) {
         `${typeText} | ${formatDateTime(expense.expenseDate)} | ${expense.category}`,
         `${expense.description} | ${formatMoney(expense.amount, expense.currency)}`,
       ].join('\n'),
-      editExpenseFieldKeyboard(expense.id, expense.type)
+      editExpenseFieldKeyboard(expense.id)
     );
   });
 

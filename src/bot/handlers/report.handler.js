@@ -21,11 +21,7 @@ function formatCategoryStats(rows, title) {
 
   const lines = rows.map((row) => {
     const amount = Number(row._sum.amount || 0);
-    const cashback = Number(row._sum.cashback || 0);
-    return `${row.category}: ${formatMoney(amount - cashback, row.currency)} (кешбек ${formatMoney(
-      cashback,
-      row.currency
-    )})`;
+    return `${row.category}: ${formatMoney(amount, row.currency)}`;
   });
 
   return `${title}:\n\n${lines.join('\n')}`;
@@ -78,12 +74,8 @@ function formatFamilyByUser(rows, context) {
   const lines = rows.map((row) => {
     const user = membersById.get(row.userId);
     const amount = Number(row._sum.amount || 0);
-    const cashback = Number(row._sum.cashback || 0);
 
-    return `${getDisplayName(user)}: ${formatMoney(amount - cashback, row.currency)} (расходы ${formatMoney(
-      amount,
-      row.currency
-    )}, кешбек ${formatMoney(cashback, row.currency)})`;
+    return `${getDisplayName(user)}: ${formatMoney(amount, row.currency)}`;
   });
 
   return `Кто сколько потратил в семье за месяц:\n\n${lines.join('\n')}`;

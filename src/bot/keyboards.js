@@ -100,26 +100,15 @@ function editExpenseListKeyboard(expenses) {
   return Markup.inlineKeyboard(rows);
 }
 
-function editExpenseFieldKeyboard(expenseId, type = 'EXPENSE') {
-  const rows = [
+function editExpenseFieldKeyboard(expenseId) {
+  return Markup.inlineKeyboard([
     [
       Markup.button.callback('Категория', `EDIT_EXPENSE_FIELD:${expenseId}:category`),
       Markup.button.callback('Описание', `EDIT_EXPENSE_FIELD:${expenseId}:description`),
     ],
-  ];
-
-  if (type === 'EXPENSE') {
-    rows.push([
-      Markup.button.callback('Сумма', `EDIT_EXPENSE_FIELD:${expenseId}:amount`),
-      Markup.button.callback('Кешбек', `EDIT_EXPENSE_FIELD:${expenseId}:cashback`),
-    ]);
-  } else {
-    rows.push([Markup.button.callback('Сумма', `EDIT_EXPENSE_FIELD:${expenseId}:amount`)]);
-  }
-
-  rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
-
-  return Markup.inlineKeyboard(rows);
+    [Markup.button.callback('Сумма', `EDIT_EXPENSE_FIELD:${expenseId}:amount`)],
+    [Markup.button.callback('Отмена', actions.CANCEL)],
+  ]);
 }
 
 function afterExpenseKeyboard(category) {

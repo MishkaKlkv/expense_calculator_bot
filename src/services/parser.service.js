@@ -56,45 +56,4 @@ function parseAmountWithCurrency(text, defaultCurrency = 'RUB') {
   };
 }
 
-function parseCashbackMessage(text) {
-  const input = text.trim().replace(/\s+/g, ' ').toLowerCase();
-
-  if (['нет', 'no', 'n', '0'].includes(input)) {
-    return {
-      cashback: '0',
-    };
-  }
-
-  const percentMatch = input.match(/^(\d+(?:[.,]\d{1,2})?)\s*%$/u);
-
-  if (percentMatch) {
-    const percent = normalizeAmount(percentMatch[1]);
-
-    if (Number(percent) < 0 || Number(percent) > 100) {
-      return null;
-    }
-
-    return {
-      percent,
-    };
-  }
-
-  const match = input.match(/^(\d+(?:[.,]\d{1,2})?)\s*([a-zA-Zа-яА-ЯёЁ₽$]+)?$/u);
-
-  if (!match) {
-    return null;
-  }
-
-  const cashback = normalizeAmount(match[1]);
-
-  if (Number(cashback) < 0) {
-    return null;
-  }
-
-  return {
-    cashback,
-    currency: normalizeCurrency(match[2]),
-  };
-}
-
-module.exports = { parseAmountWithCurrency, parseCashbackMessage, parseExpenseMessage };
+module.exports = { parseAmountWithCurrency, parseExpenseMessage };

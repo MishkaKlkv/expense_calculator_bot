@@ -21,13 +21,17 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 
 - The bot stores per-user state in `DialogState`; always reset state after a flow completes or is canceled.
 - Expense reports, recent expenses, edit, and delete flows should keep filtering by `type: 'EXPENSE'`.
+- Cashback is tracked as regular income in the `Кешбек` income category, not as a per-expense field in user-facing flows.
 - Income rows should be saved with `type: 'INCOME'` and `cashback: '0'`.
 - `/add` adds expenses.
-- `/stats` shows expense stats for the current month.
-- `/balance` shows current-month income minus expenses by currency.
+- `/stats` shows current-month expense and income stats by category.
+- `/balance` shows current-month income minus expenses by currency, plus RUB totals using the current USD/RUB rate.
+- USD conversion is fetched in `src/services/exchangeRate.service.js` from the Bank of Russia XML daily endpoint and cached in memory.
 - `/income` should show income stats for the current month.
 - `/add_income` adds income.
 - `/cancel` resets the current dialog state.
+- `/reminder HH:MM` configures a persisted daily expense-entry reminder; `/reminder_off` disables it and `/reminder_on` re-enables it.
+- Reminder times are stored as `HH:MM` in `Europe/Moscow` by default and delivered by `src/services/reminderScheduler.service.js`.
 - Family account owners can rename the account with `/family_rename` and remove members from the `/family` owner controls.
 - Voice transcription code and dependencies may remain in the project, but user-facing help text should not advertise voice input unless API billing is intentionally enabled again.
 

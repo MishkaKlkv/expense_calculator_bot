@@ -43,6 +43,7 @@ model TelegramUser {
   updatedAt      DateTime     @updatedAt @map("updated_at")
   expenses       Expense[]
   dialogState    DialogState?
+  dailyReminder  DailyReminder?
   familyMembers  FamilyMember[]
   createdFamilies FamilyAccount[] @relation("CreatedFamilies")
 
@@ -105,4 +106,19 @@ model DialogState {
   user      TelegramUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("dialog_states")
+}
+
+model DailyReminder {
+  id           String       @id @default(cuid())
+  userId       String       @unique @map("user_id")
+  timeOfDay    String       @map("time_of_day")
+  timezone     String       @default("Europe/Moscow")
+  enabled      Boolean      @default(true)
+  lastSentDate String?      @map("last_sent_date")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  user         TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, timeOfDay])
+  @@map("daily_reminders")
 }

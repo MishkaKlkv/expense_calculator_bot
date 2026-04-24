@@ -5,7 +5,6 @@ const {
 } = require('../repositories/expense.repository');
 const { EXPENSE_CATEGORIES, INCOME_CATEGORIES } = require('../constants/categories');
 const { parseAmountWithCurrency } = require('./parser.service');
-const { parseCashbackForExpense } = require('./expense.service');
 
 async function getEditableExpenses(userId, limit = 10) {
   return findRecentTransactions({ userId, limit });
@@ -50,38 +49,11 @@ function parseEditValue({ field, value, expense }) {
       return { ok: false, reason: 'INVALID_AMOUNT' };
     }
 
-    if (Number(expense.cashback || 0) > Number(parsed.amount)) {
-      return { ok: false, reason: 'CASHBACK_TOO_HIGH' };
-    }
-
     return {
       ok: true,
       data: {
         amount: parsed.amount,
         currency: parsed.currency,
-      },
-    };
-  }
-
-  if (field === 'cashback') {
-    if (expense.type !== 'EXPENSE') {
-      return { ok: false, reason: 'UNKNOWN_FIELD' };
-    }
-
-    const parsed = parseCashbackForExpense({
-      messageText: value,
-      currency: expense.currency,
-      amount: expense.amount,
-    });
-
-    if (!parsed.ok) {
-      return parsed;
-    }
-
-    return {
-      ok: true,
-      data: {
-        cashback: parsed.cashback,
       },
     };
   }
