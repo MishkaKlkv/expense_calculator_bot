@@ -26,6 +26,10 @@ const replyLabels = {
   HELP: 'Помощь',
 };
 
+function getUserButtonName(user) {
+  return user.firstName || user.username || String(user.telegramUserId);
+}
+
 function mainMenuKeyboard() {
   return Markup.inlineKeyboard([
     [
@@ -38,7 +42,7 @@ function mainMenuKeyboard() {
     ],
     [
       Markup.button.callback('Редактировать', actions.EDIT_EXPENSE),
-      Markup.button.callback('Удалить трату', actions.DELETE_EXPENSE),
+      Markup.button.callback('Удалить операцию', actions.DELETE_EXPENSE),
     ],
     [
       Markup.button.callback('Семейный счет', actions.FAMILY_INFO),
@@ -96,18 +100,26 @@ function editExpenseListKeyboard(expenses) {
   return Markup.inlineKeyboard(rows);
 }
 
-function editExpenseFieldKeyboard(expenseId) {
-  return Markup.inlineKeyboard([
+function editExpenseFieldKeyboard(expenseId, type = 'EXPENSE') {
+  const rows = [
     [
       Markup.button.callback('Категория', `EDIT_EXPENSE_FIELD:${expenseId}:category`),
       Markup.button.callback('Описание', `EDIT_EXPENSE_FIELD:${expenseId}:description`),
     ],
-    [
+  ];
+
+  if (type === 'EXPENSE') {
+    rows.push([
       Markup.button.callback('Сумма', `EDIT_EXPENSE_FIELD:${expenseId}:amount`),
       Markup.button.callback('Кешбек', `EDIT_EXPENSE_FIELD:${expenseId}:cashback`),
-    ],
-    [Markup.button.callback('Отмена', actions.CANCEL)],
-  ]);
+    ]);
+  } else {
+    rows.push([Markup.button.callback('Сумма', `EDIT_EXPENSE_FIELD:${expenseId}:amount`)]);
+  }
+
+  rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
+
+  return Markup.inlineKeyboard(rows);
 }
 
 function afterExpenseKeyboard(category) {
@@ -154,6 +166,23 @@ function incomeCategoryKeyboard() {
   return Markup.inlineKeyboard(rows);
 }
 
+function familyOwnerKeyboard(members, ownerUserId) {
+  const rows = members
+    .filter((member) => member.userId !== ownerUserId && member.role !== 'OWNER')
+    .map((member) => {
+      return [
+        Markup.button.callback(
+          `Удалить ${getUserButtonName(member.user)}`,
+          `FAMILY_REMOVE:${member.id}`
+        ),
+      ];
+    });
+
+  rows.push([Markup.button.callback('Главное меню', 'SHOW_MENU')]);
+
+  return Markup.inlineKeyboard(rows);
+}
+
 module.exports = {
   actions,
   afterExpenseKeyboard,
@@ -163,6 +192,7 @@ module.exports = {
   deleteExpenseListKeyboard,
   editExpenseFieldKeyboard,
   editExpenseListKeyboard,
+  familyOwnerKeyboard,
   incomeCategoryKeyboard,
   mainMenuKeyboard,
   mainMenuReplyKeyboard,

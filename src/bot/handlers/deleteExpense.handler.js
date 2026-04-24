@@ -18,8 +18,9 @@ const { showMainMenu } = require('./menu.handler');
 function formatExpenseLine(expense, index) {
   const cashback = Number(expense.cashback || 0);
   const cashbackText = cashback > 0 ? `, кешбек ${formatMoney(cashback, expense.currency)}` : '';
+  const typeText = expense.type === 'INCOME' ? 'доход' : 'расход';
 
-  return `${index + 1}. ${formatDateTime(expense.expenseDate)} | ${expense.category} | ${
+  return `${index + 1}. ${typeText} | ${formatDateTime(expense.expenseDate)} | ${expense.category} | ${
     expense.description
   } | ${formatMoney(expense.amount, expense.currency)}${cashbackText}`;
 }
@@ -29,7 +30,7 @@ async function showDeleteExpenseList(ctx) {
   const expenses = await getDeletableExpenses(user.id);
 
   if (expenses.length === 0) {
-    await showMainMenu(ctx, 'Удалять пока нечего: последних трат нет.');
+    await showMainMenu(ctx, 'Удалять пока нечего: последних операций нет.');
     return;
   }
 
@@ -39,7 +40,7 @@ async function showDeleteExpenseList(ctx) {
     expenseIds: expenses.map((expense) => expense.id),
   });
   await ctx.reply(
-    `Выберите трату для удаления:\n\n${lines.join('\n')}`,
+    `Выберите операцию для удаления:\n\n${lines.join('\n')}`,
     deleteExpenseListKeyboard(expenses)
   );
 }
@@ -62,16 +63,18 @@ function registerDeleteExpenseHandlers(bot) {
 
     if (!expense) {
       await resetDialogState(user.id);
-      await showMainMenu(ctx, 'Не нашел эту трату или у вас нет прав ее удалить.');
+      await showMainMenu(ctx, 'Не нашел эту операцию или у вас нет прав ее удалить.');
       return;
     }
+
+    const typeText = expense.type === 'INCOME' ? 'доход' : 'расход';
 
     await setDialogState(user.id, 'DELETE_TRANSACTION_CONFIRMATION', { expenseId });
     await ctx.reply(
       [
-        'Удалить эту трату?',
+        'Удалить эту операцию?',
         '',
-        `${formatDateTime(expense.expenseDate)} | ${expense.category}`,
+        `${typeText} | ${formatDateTime(expense.expenseDate)} | ${expense.category}`,
         `${expense.description} | ${formatMoney(expense.amount, expense.currency)}`,
       ].join('\n'),
       deleteExpenseConfirmKeyboard(expense.id)
@@ -87,11 +90,11 @@ function registerDeleteExpenseHandlers(bot) {
     await resetDialogState(user.id);
 
     if (!result.ok) {
-      await showMainMenu(ctx, 'Не получилось удалить трату: она уже удалена или недоступна.');
+      await showMainMenu(ctx, 'Не получилось удалить операцию: она уже удалена или недоступна.');
       return;
     }
 
-    await showMainMenu(ctx, 'Трата удалена.');
+    await showMainMenu(ctx, 'Операция удалена.');
   });
 }
 

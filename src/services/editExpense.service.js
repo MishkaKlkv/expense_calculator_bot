@@ -1,28 +1,30 @@
 const {
-  findExpenseByIdForUser,
-  findRecentExpenses,
-  updateExpenseByIdForUser,
+  findRecentTransactions,
+  findTransactionByIdForUser,
+  updateTransactionByIdForUser,
 } = require('../repositories/expense.repository');
-const { EXPENSE_CATEGORIES } = require('../constants/categories');
+const { EXPENSE_CATEGORIES, INCOME_CATEGORIES } = require('../constants/categories');
 const { parseAmountWithCurrency } = require('./parser.service');
 const { parseCashbackForExpense } = require('./expense.service');
 
 async function getEditableExpenses(userId, limit = 10) {
-  return findRecentExpenses({ userId, limit });
+  return findRecentTransactions({ userId, limit });
 }
 
 async function getExpenseForEdit({ expenseId, userId }) {
-  return findExpenseByIdForUser({ id: expenseId, userId });
+  return findTransactionByIdForUser({ id: expenseId, userId });
 }
 
-function normalizeCategory(value) {
+function normalizeCategory(value, type = 'EXPENSE') {
   const input = value.trim().toLowerCase();
-  return EXPENSE_CATEGORIES.find((category) => category.toLowerCase() === input) || null;
+  const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
+  return categories.find((category) => category.toLowerCase() === input) || null;
 }
 
 function parseEditValue({ field, value, expense }) {
   if (field === 'category') {
-    const category = normalizeCategory(value);
+    const category = normalizeCategory(value, expense.type);
 
     if (!category) {
       return { ok: false, reason: 'UNKNOWN_CATEGORY' };
@@ -62,6 +64,10 @@ function parseEditValue({ field, value, expense }) {
   }
 
   if (field === 'cashback') {
+    if (expense.type !== 'EXPENSE') {
+      return { ok: false, reason: 'UNKNOWN_FIELD' };
+    }
+
     const parsed = parseCashbackForExpense({
       messageText: value,
       currency: expense.currency,
@@ -96,7 +102,7 @@ async function updateExpenseField({ expenseId, userId, field, value }) {
     return parsed;
   }
 
-  const result = await updateExpenseByIdForUser({
+  const result = await updateTransactionByIdForUser({
     id: expenseId,
     userId,
     data: parsed.data,

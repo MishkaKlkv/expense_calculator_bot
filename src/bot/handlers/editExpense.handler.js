@@ -20,7 +20,9 @@ const { formatMoney } = require('../../utils/money');
 const { showMainMenu } = require('./menu.handler');
 
 function formatExpenseLine(expense, index) {
-  return `${index + 1}. ${formatDateTime(expense.expenseDate)} | ${expense.category} | ${
+  const typeText = expense.type === 'INCOME' ? 'доход' : 'расход';
+
+  return `${index + 1}. ${typeText} | ${formatDateTime(expense.expenseDate)} | ${expense.category} | ${
     expense.description
   } | ${formatMoney(expense.amount, expense.currency)}`;
 }
@@ -30,19 +32,20 @@ async function showEditExpenseList(ctx) {
   const expenses = await getEditableExpenses(user.id);
 
   if (expenses.length === 0) {
-    await showMainMenu(ctx, 'Редактировать пока нечего: последних трат нет.');
+    await showMainMenu(ctx, 'Редактировать пока нечего: последних операций нет.');
     return;
   }
 
   await ctx.reply(
-    `Выберите трату для редактирования:\n\n${expenses.map(formatExpenseLine).join('\n')}`,
+    `Выберите операцию для редактирования:\n\n${expenses.map(formatExpenseLine).join('\n')}`,
     editExpenseListKeyboard(expenses)
   );
 }
 
-function getFieldPrompt(field) {
+function getFieldPrompt(field, type = 'EXPENSE') {
+  const categoryExample = type === 'INCOME' ? 'Зарплата' : 'Дети';
   const prompts = {
-    category: 'Отправьте новую категорию текстом, например: Дети',
+    category: `Отправьте новую категорию текстом, например: ${categoryExample}`,
     description: 'Отправьте новое описание.',
     amount: 'Отправьте новую сумму, например: 580 или 10 usd',
     cashback: 'Отправьте новый кешбек: нет, 250 или 5%',
@@ -59,10 +62,10 @@ function getEditErrorText(reason) {
     CASHBACK_TOO_HIGH: 'Кешбек не может быть больше суммы расхода.',
     CURRENCY_MISMATCH: 'Кешбек должен быть в той же валюте, что и расход.',
     PARSE_ERROR: 'Не понял значение. Попробуйте еще раз.',
-    NOT_FOUND: 'Не нашел эту трату или у вас нет прав ее редактировать.',
+    NOT_FOUND: 'Не нашел эту операцию или у вас нет прав ее редактировать.',
   };
 
-  return errors[reason] || 'Не получилось обновить трату.';
+  return errors[reason] || 'Не получилось обновить операцию.';
 }
 
 function registerEditExpenseHandlers(bot) {
@@ -82,18 +85,20 @@ function registerEditExpenseHandlers(bot) {
     await ctx.answerCbQuery();
 
     if (!expense) {
-      await showMainMenu(ctx, 'Не нашел эту трату или у вас нет прав ее редактировать.');
+      await showMainMenu(ctx, 'Не нашел эту операцию или у вас нет прав ее редактировать.');
       return;
     }
+
+    const typeText = expense.type === 'INCOME' ? 'доход' : 'расход';
 
     await ctx.reply(
       [
         'Что изменить?',
         '',
-        `${formatDateTime(expense.expenseDate)} | ${expense.category}`,
+        `${typeText} | ${formatDateTime(expense.expenseDate)} | ${expense.category}`,
         `${expense.description} | ${formatMoney(expense.amount, expense.currency)}`,
       ].join('\n'),
-      editExpenseFieldKeyboard(expense.id)
+      editExpenseFieldKeyboard(expense.id, expense.type)
     );
   });
 
@@ -103,11 +108,18 @@ function registerEditExpenseHandlers(bot) {
     const field = ctx.match[2];
 
     await ctx.answerCbQuery();
+    const expense = await getExpenseForEdit({ expenseId, userId: user.id });
+
+    if (!expense) {
+      await showMainMenu(ctx, 'Не нашел эту операцию или у вас нет прав ее редактировать.');
+      return;
+    }
+
     await setDialogState(user.id, 'EDIT_TRANSACTION_WAITING_FOR_FIELD', {
       expenseId,
       field,
     });
-    await ctx.reply(getFieldPrompt(field));
+    await ctx.reply(getFieldPrompt(field, expense.type));
   });
 
   bot.on('text', async (ctx, next) => {
@@ -143,7 +155,7 @@ function registerEditExpenseHandlers(bot) {
     }
 
     await resetDialogState(user.id);
-    await showMainMenu(ctx, 'Трата обновлена.');
+    await showMainMenu(ctx, 'Операция обновлена.');
   });
 }
 

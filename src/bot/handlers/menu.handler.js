@@ -19,11 +19,13 @@ function getHelpText() {
     'Команды бота:',
     '',
     '/menu - показать главное меню с кнопками',
+    '/cancel - отменить текущее действие',
     '/add - добавить расход',
-    '/income - добавить доход',
+    '/balance - баланс за текущий месяц',
+    '/income - доходы за текущий месяц',
     '/add_income - добавить доход',
-    '/edit - редактировать свою трату',
-    '/delete - удалить свою трату',
+    '/edit - редактировать свою операцию',
+    '/delete - удалить свою операцию',
     '/stats - статистика за текущий месяц',
     '/recent - последние траты',
     '/today - расходы за сегодня',
@@ -38,6 +40,8 @@ function getHelpText() {
     '/family - информация о семейном счете',
     '/family_create НАЗВАНИЕ - создать семейный счет',
     '/family_join КОД - присоединиться к семейному счету',
+    '/family_rename НАЗВАНИЕ - переименовать семейный счет',
+    'Удалить участника может владелец через кнопки в /family',
     '/family_stats - семейная статистика за месяц',
     '/family_recent - последние семейные траты',
     '/family_by_user - кто сколько потратил',
@@ -67,6 +71,13 @@ function registerMenuHandlers(bot) {
   bot.command('menu', async (ctx) => {
     await upsertTelegramUser(ctx.from);
     await showMainMenu(ctx);
+  });
+
+  bot.command('cancel', async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+
+    await resetDialogState(user.id);
+    await showMainMenu(ctx, 'Действие отменено.');
   });
 
   bot.command('help', async (ctx) => {
@@ -102,7 +113,6 @@ function registerMenuHandlers(bot) {
     await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard());
   }
 
-  bot.command('income', startAddIncome);
   bot.command('add_income', startAddIncome);
   bot.hears(replyLabels.ADD_INCOME, startAddIncome);
 

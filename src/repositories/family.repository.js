@@ -79,9 +79,32 @@ async function joinFamily({ familyAccountId, userId }) {
   });
 }
 
+async function updateFamilyName({ familyAccountId, name }) {
+  return prisma.familyAccount.update({
+    where: {
+      id: familyAccountId,
+    },
+    data: {
+      name,
+    },
+  });
+}
+
+async function deleteFamilyMember({ familyAccountId, familyMemberId }) {
+  return prisma.familyMember.deleteMany({
+    where: {
+      id: familyMemberId,
+      familyAccountId,
+      role: 'MEMBER',
+    },
+  });
+}
+
 module.exports = {
   createFamilyForUser,
+  deleteFamilyMember,
   findFamilyByInviteCode,
   getFamilyForUser,
   joinFamily,
+  updateFamilyName,
 };

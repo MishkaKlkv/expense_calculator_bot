@@ -1,9 +1,11 @@
-const { actions, replyLabels } = require('../keyboards');
+const { actions, familyOwnerKeyboard, replyLabels } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   createFamily,
   getFamilyContext,
   joinFamilyByCode,
+  removeFamilyMember,
+  renameFamily,
 } = require('../../services/family.service');
 const {
   getCurrentMonthStatsForUsers,
@@ -37,6 +39,15 @@ function formatFamilyInfo(context) {
   const memberLines = context.members.map((member) => {
     return `- ${getDisplayName(member.user)} (${member.role === 'OWNER' ? 'владелец' : 'участник'})`;
   });
+  const ownerLines =
+    context.currentMember.role === 'OWNER'
+      ? [
+          '',
+          'Управление для владельца:',
+          'Переименовать: /family_rename Новое название',
+          'Удалить участника: кнопкой ниже',
+        ]
+      : [];
 
   return [
     `Семейный счет: ${context.family.name}`,
@@ -47,6 +58,7 @@ function formatFamilyInfo(context) {
     '',
     'Семейная статистика: /family_stats',
     'Последние семейные траты: /family_recent',
+    ...ownerLines,
   ].join('\n');
 }
 
@@ -109,6 +121,11 @@ function formatRecentExpenses(expenses) {
 async function sendFamilyInfo(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   const context = await getFamilyContext(user.id);
+
+  if (context?.currentMember.role === 'OWNER' && context.members.length > 1) {
+    await ctx.reply(formatFamilyInfo(context), familyOwnerKeyboard(context.members, user.id));
+    return;
+  }
 
   await ctx.reply(formatFamilyInfo(context));
 }
@@ -187,6 +204,29 @@ function registerFamilyHandlers(bot) {
     await ctx.reply(`Готово, вы присоединились к семейному счету "${result.family.name}".`);
   });
 
+  bot.command('family_rename', async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const name = ctx.message.text.replace('/family_rename', '').trim();
+    const result = await renameFamily({ userId: user.id, name });
+
+    if (!result.ok && result.reason === 'EMPTY_NAME') {
+      await ctx.reply('Отправьте новое название так: /family_rename Дом');
+      return;
+    }
+
+    if (!result.ok && result.reason === 'NOT_IN_FAMILY') {
+      await ctx.reply('Сначала создайте семейный счет через /family_create или присоединитесь через /family_join КОД.');
+      return;
+    }
+
+    if (!result.ok && result.reason === 'NOT_OWNER') {
+      await ctx.reply('Переименовать семейный счет может только владелец.');
+      return;
+    }
+
+    await ctx.reply(`Семейный счет переименован: ${result.family.name}`);
+  });
+
   bot.command('family_stats', sendFamilyStats);
   bot.command('family_recent', sendFamilyRecent);
 
@@ -203,6 +243,37 @@ function registerFamilyHandlers(bot) {
   bot.action(actions.FAMILY_RECENT, async (ctx) => {
     await ctx.answerCbQuery();
     await sendFamilyRecent(ctx);
+  });
+
+  bot.action(/^FAMILY_REMOVE:(.+)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const familyMemberId = ctx.match[1];
+    const result = await removeFamilyMember({ userId: user.id, familyMemberId });
+
+    await ctx.answerCbQuery();
+
+    if (!result.ok && result.reason === 'NOT_OWNER') {
+      await ctx.reply('Удалять участников может только владелец семейного счета.');
+      return;
+    }
+
+    if (!result.ok && result.reason === 'NOT_IN_FAMILY') {
+      await ctx.reply('Семейный счет не найден.');
+      return;
+    }
+
+    if (!result.ok && result.reason === 'CANNOT_REMOVE_OWNER') {
+      await ctx.reply('Владельца нельзя удалить из семейного счета.');
+      return;
+    }
+
+    if (!result.ok) {
+      await ctx.reply('Не получилось удалить участника: он уже удален или недоступен.');
+      return;
+    }
+
+    await ctx.reply(`Участник удален: ${getDisplayName(result.member.user)}`);
+    await sendFamilyInfo(ctx);
   });
 }
 

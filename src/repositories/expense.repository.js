@@ -32,6 +32,21 @@ async function findRecentExpenses({ userId, userIds, limit = 10 }) {
   });
 }
 
+async function findRecentTransactions({ userId, limit = 10 }) {
+  return prisma.expense.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      user: true,
+    },
+    orderBy: {
+      expenseDate: 'desc',
+    },
+    take: limit,
+  });
+}
+
 async function findExpensesInRange({ userId, userIds, start, end }) {
   return prisma.expense.findMany({
     where: {
@@ -81,12 +96,31 @@ async function findExpenseByIdForUser({ id, userId }) {
   });
 }
 
+async function findTransactionByIdForUser({ id, userId }) {
+  return prisma.expense.findFirst({
+    where: {
+      id,
+      userId,
+    },
+  });
+}
+
 async function updateExpenseByIdForUser({ id, userId, data }) {
   return prisma.expense.updateMany({
     where: {
       id,
       userId,
       type: 'EXPENSE',
+    },
+    data,
+  });
+}
+
+async function updateTransactionByIdForUser({ id, userId, data }) {
+  return prisma.expense.updateMany({
+    where: {
+      id,
+      userId,
     },
     data,
   });
@@ -102,12 +136,25 @@ async function deleteExpenseByIdForUser({ id, userId }) {
   });
 }
 
+async function deleteTransactionByIdForUser({ id, userId }) {
+  return prisma.expense.deleteMany({
+    where: {
+      id,
+      userId,
+    },
+  });
+}
+
 async function aggregateExpensesByCategory({ userId, userIds, start, end }) {
+  return aggregateTransactionsByCategory({ userId, userIds, start, end, type: 'EXPENSE' });
+}
+
+async function aggregateTransactionsByCategory({ userId, userIds, start, end, type }) {
   return prisma.expense.groupBy({
     by: ['category', 'currency'],
     where: {
       userId: buildUserWhere({ userId, userIds }),
-      type: 'EXPENSE',
+      type,
       expenseDate: {
         gte: start,
         lt: end,
@@ -145,12 +192,17 @@ async function aggregateExpensesByUser({ userIds, start, end }) {
 
 module.exports = {
   aggregateExpensesByCategory,
+  aggregateTransactionsByCategory,
   aggregateExpensesByUser,
   createExpense,
   deleteExpenseByIdForUser,
+  deleteTransactionByIdForUser,
   findExpensesInRange,
   findExpenseByIdForUser,
   findRecentExpenses,
+  findRecentTransactions,
   findTopExpenses,
+  findTransactionByIdForUser,
   updateExpenseByIdForUser,
+  updateTransactionByIdForUser,
 };
