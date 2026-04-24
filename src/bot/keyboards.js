@@ -11,6 +11,8 @@ const actions = {
   FAMILY_INFO: 'FAMILY_INFO',
   FAMILY_STATS: 'FAMILY_STATS',
   FAMILY_RECENT: 'FAMILY_RECENT',
+  CLEAR_MONTH_EXPENSES: 'CLEAR_MONTH_EXPENSES',
+  CLEAR_ALL_EXPENSES: 'CLEAR_ALL_EXPENSES',
   REPEAT_CATEGORY: 'REPEAT_CATEGORY',
   CANCEL: 'CANCEL',
 };
@@ -48,6 +50,10 @@ function mainMenuKeyboard() {
       Markup.button.callback('Семейный счет', actions.FAMILY_INFO),
       Markup.button.callback('Семейная статистика', actions.FAMILY_STATS),
     ],
+    [
+      Markup.button.callback('Очистить расходы месяца', actions.CLEAR_MONTH_EXPENSES),
+      Markup.button.callback('Очистить все расходы', actions.CLEAR_ALL_EXPENSES),
+    ],
   ]);
 }
 
@@ -80,6 +86,19 @@ function deleteExpenseConfirmKeyboard(expenseId) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback('Удалить', `DELETE_EXPENSE_CONFIRM:${expenseId}`),
+      Markup.button.callback('Отмена', actions.CANCEL),
+    ],
+  ]);
+}
+
+function clearExpensesConfirmKeyboard(scope) {
+  const confirmAction =
+    scope === 'all' ? 'CLEAR_EXPENSES_CONFIRM:all' : 'CLEAR_EXPENSES_CONFIRM:month';
+  const label = scope === 'all' ? 'Очистить все расходы' : 'Очистить расходы месяца';
+
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback(label, confirmAction),
       Markup.button.callback('Отмена', actions.CANCEL),
     ],
   ]);
@@ -177,6 +196,7 @@ module.exports = {
   afterExpenseKeyboard,
   afterIncomeKeyboard,
   categoryKeyboard,
+  clearExpensesConfirmKeyboard,
   deleteExpenseConfirmKeyboard,
   deleteExpenseListKeyboard,
   editExpenseFieldKeyboard,

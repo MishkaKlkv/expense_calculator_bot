@@ -1,3 +1,4 @@
+const { registerClearExpensesHandlers } = require('./handlers/clearExpenses.handler');
 const { registerDeleteExpenseHandlers } = require('./handlers/deleteExpense.handler');
 const { registerEditExpenseHandlers } = require('./handlers/editExpense.handler');
 const { registerExpenseHandlers } = require('./handlers/expense.handler');
@@ -34,6 +35,7 @@ function registerBot(bot) {
   registerStatsHandlers(bot);
   registerReportHandlers(bot);
   registerRecentHandlers(bot);
+  registerClearExpensesHandlers(bot);
   registerDeleteExpenseHandlers(bot);
   registerEditExpenseHandlers(bot);
   registerExpenseHandlers(bot);

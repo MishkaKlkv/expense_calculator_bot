@@ -157,7 +157,7 @@ function registerFamilyHandlers(bot) {
         `Семейный счет "${result.family.name}" создан.`,
         `Инвайт-код для второго участника: ${result.family.inviteCode}`,
         '',
-        `Жена может отправить боту: /family_join ${result.family.inviteCode}`,
+        `Другой член семьи может отправить боту: /family_join ${result.family.inviteCode}`,
       ].join('\n')
     );
   });

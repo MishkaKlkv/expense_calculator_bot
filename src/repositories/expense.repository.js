@@ -145,6 +145,23 @@ async function deleteTransactionByIdForUser({ id, userId }) {
   });
 }
 
+async function deleteExpensesForUser({ userId, start, end }) {
+  return prisma.expense.deleteMany({
+    where: {
+      userId,
+      type: 'EXPENSE',
+      ...(start && end
+        ? {
+            expenseDate: {
+              gte: start,
+              lt: end,
+            },
+          }
+        : {}),
+    },
+  });
+}
+
 async function aggregateExpensesByCategory({ userId, userIds, start, end }) {
   return aggregateTransactionsByCategory({ userId, userIds, start, end, type: 'EXPENSE' });
 }
@@ -196,6 +213,7 @@ module.exports = {
   aggregateExpensesByUser,
   createExpense,
   deleteExpenseByIdForUser,
+  deleteExpensesForUser,
   deleteTransactionByIdForUser,
   findExpensesInRange,
   findExpenseByIdForUser,

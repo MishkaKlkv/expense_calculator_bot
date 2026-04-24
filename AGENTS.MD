@@ -21,6 +21,7 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 
 - The bot stores per-user state in `DialogState`; always reset state after a flow completes or is canceled.
 - Expense reports, recent expenses, edit, and delete flows should keep filtering by `type: 'EXPENSE'`.
+- Bulk expense cleanup commands must delete only `type: 'EXPENSE'`; income rows must remain intact.
 - Cashback is tracked as regular income in the `Кешбек` income category, not as a per-expense field in user-facing flows.
 - Income rows should be saved with `type: 'INCOME'` and `cashback: '0'`.
 - `/add` adds expenses.
