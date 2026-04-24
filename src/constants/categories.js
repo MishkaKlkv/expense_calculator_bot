@@ -22,4 +22,17 @@ const EXPENSE_CATEGORIES = [
   'Другое',
 ];
 
-module.exports = { EXPENSE_CATEGORIES };
+const INCOME_CATEGORIES = [
+  'Зарплата',
+  'Аванс',
+  'Премия',
+  'Фриланс',
+  'Проценты',
+  'Инвестиции',
+  'Подарок',
+  'Возврат',
+  'Продажа',
+  'Другое',
+];
+
+module.exports = { EXPENSE_CATEGORIES, INCOME_CATEGORIES };

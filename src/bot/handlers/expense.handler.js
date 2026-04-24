@@ -1,4 +1,9 @@
-const { afterExpenseKeyboard, categoryKeyboard } = require('../keyboards');
+const {
+  afterExpenseKeyboard,
+  afterIncomeKeyboard,
+  categoryKeyboard,
+  incomeCategoryKeyboard,
+} = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const { inferCategory } = require('../../services/autoCategory.service');
 const {
@@ -6,6 +11,10 @@ const {
   createExpenseFromPending,
   parseCashbackForExpense,
 } = require('../../services/expense.service');
+const {
+  buildPendingIncomeFromMessage,
+  createIncomeFromPending,
+} = require('../../services/income.service');
 const {
   getDialogState,
   resetDialogState,
@@ -15,9 +24,58 @@ const { transcribeTelegramVoice } = require('../../services/transcription.servic
 const { formatMoney } = require('../../utils/money');
 const { showMainMenu } = require('./menu.handler');
 
+async function handleIncomeInput(ctx, inputText, user, dialogState) {
+  console.log(`[income:input] user=${ctx.from.id} state=${dialogState.state} text="${inputText}"`);
+
+  if (dialogState.state === 'ADD_INCOME_WAITING_FOR_CATEGORY') {
+    await ctx.reply('Сначала выберите категорию кнопкой:', incomeCategoryKeyboard());
+    return;
+  }
+
+  const category = dialogState.payload?.category;
+
+  if (!category) {
+    await resetDialogState(user.id);
+    await showMainMenu(ctx, 'Категория дохода потерялась, начнем заново.');
+    return;
+  }
+
+  const result = buildPendingIncomeFromMessage({
+    category,
+    messageText: inputText,
+  });
+
+  if (!result.ok) {
+    await ctx.reply('Не получилось распознать доход. Пример: зарплата 150000 или project 500 usd');
+    return;
+  }
+
+  const saved = await createIncomeFromPending({
+    user,
+    pendingIncome: result.pendingIncome,
+  });
+
+  await resetDialogState(user.id);
+  await ctx.reply(
+    `Сохранил доход: ${saved.income.description}, ${formatMoney(
+      saved.income.amount,
+      saved.income.currency
+    )}, ${saved.income.category}`,
+    afterIncomeKeyboard(saved.income.category)
+  );
+}
+
 async function handleExpenseInput(ctx, inputText) {
   const user = await upsertTelegramUser(ctx.from);
   const dialogState = await getDialogState(user.id);
+
+  if (
+    dialogState.state === 'ADD_INCOME_WAITING_FOR_CATEGORY' ||
+    dialogState.state === 'ADD_INCOME_WAITING_FOR_DETAILS'
+  ) {
+    await handleIncomeInput(ctx, inputText, user, dialogState);
+    return;
+  }
 
   console.log(`[expense:input] user=${ctx.from.id} state=${dialogState.state} text="${inputText}"`);
 
@@ -146,6 +204,17 @@ function registerExpenseHandlers(bot) {
     );
   });
 
+  bot.action(/^INCOME_CATEGORY:(.+)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const category = ctx.match[1];
+
+    await ctx.answerCbQuery();
+    await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
+    await ctx.reply(
+      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000 или project 500 usd`
+    );
+  });
+
   bot.on('text', async (ctx, next) => {
     try {
       if (ctx.message.text.startsWith('/')) {
@@ -154,8 +223,8 @@ function registerExpenseHandlers(bot) {
 
       await handleExpenseInput(ctx, ctx.message.text);
     } catch (error) {
-      console.error('[expense:text] failed', error);
-      await ctx.reply('Что-то пошло не так при обработке расхода. Попробуйте еще раз.');
+      console.error('[transaction:text] failed', error);
+      await ctx.reply('Что-то пошло не так при обработке операции. Попробуйте еще раз.');
     }
   });
 
@@ -178,7 +247,7 @@ function registerExpenseHandlers(bot) {
       }
 
       if (!transcription.ok && transcription.reason === 'OPENAI_RATE_LIMIT') {
-        await ctx.reply('OpenAI API временно ограничил запросы. Попробуйте голосом позже или отправьте текстом.');
+        await ctx.reply('OpenAI API временно ограничил запросы. Отправьте текстом.');
         return;
       }
 
@@ -190,7 +259,7 @@ function registerExpenseHandlers(bot) {
       await ctx.reply(`Распознал: ${transcription.text}`);
       await handleExpenseInput(ctx, transcription.text);
     } catch (error) {
-      console.error('[expense:voice] failed', error);
+      console.error('[transaction:voice] failed', error);
       await ctx.reply('Не получилось обработать голосовое. Попробуйте текстом.');
     }
   });

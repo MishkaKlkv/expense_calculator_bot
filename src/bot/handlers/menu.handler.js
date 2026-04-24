@@ -1,6 +1,7 @@
 const {
   actions,
   categoryKeyboard,
+  incomeCategoryKeyboard,
   mainMenuKeyboard,
   mainMenuReplyKeyboard,
   replyLabels,
@@ -19,6 +20,8 @@ function getHelpText() {
     '',
     '/menu - показать главное меню с кнопками',
     '/add - добавить расход',
+    '/income - добавить доход',
+    '/add_income - добавить доход',
     '/edit - редактировать свою трату',
     '/delete - удалить свою трату',
     '/stats - статистика за текущий месяц',
@@ -43,9 +46,12 @@ function getHelpText() {
     'перекресток 580',
     'продукты перекресток 580',
     'coffee 10 usd',
-    'Можно отправить голосовое после выбора категории.',
     '',
-    'После расхода бот спросит кешбек: ответьте "нет", суммой, процентом 5% или голосом.',
+    'Формат дохода:',
+    'зарплата 150000',
+    'фриланс проект 500 usd',
+    '',
+    'После расхода бот спросит кешбек: ответьте "нет", суммой или процентом 5%.',
   ].join('\n');
 }
 
@@ -54,7 +60,7 @@ function registerMenuHandlers(bot) {
     await upsertTelegramUser(ctx.from);
     await showMainMenu(
       ctx,
-      'Привет! Я помогу учитывать расходы по категориям. Начните с добавления расхода.'
+      'Привет! Я помогу учитывать расходы и доходы по категориям. Начните с добавления операции.'
     );
   });
 
@@ -90,6 +96,24 @@ function registerMenuHandlers(bot) {
     await ctx.reply('Выберите категорию расхода:', categoryKeyboard());
   });
 
+  async function startAddIncome(ctx) {
+    const user = await upsertTelegramUser(ctx.from);
+    await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_CATEGORY');
+    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard());
+  }
+
+  bot.command('income', startAddIncome);
+  bot.command('add_income', startAddIncome);
+  bot.hears(replyLabels.ADD_INCOME, startAddIncome);
+
+  bot.action(actions.ADD_INCOME, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+
+    await ctx.answerCbQuery();
+    await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_CATEGORY');
+    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard());
+  });
+
   bot.action(/^REPEAT_CATEGORY:(.+)$/u, async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
     const category = ctx.match[1];
@@ -98,6 +122,17 @@ function registerMenuHandlers(bot) {
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_DETAILS', { category });
     await ctx.reply(
       `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd`
+    );
+  });
+
+  bot.action(/^ADD_INCOME:(.+)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const category = ctx.match[1];
+
+    await ctx.answerCbQuery();
+    await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
+    await ctx.reply(
+      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000 или project 500 usd`
     );
   });
 
