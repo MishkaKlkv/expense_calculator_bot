@@ -1,0 +1,39 @@
+name: expense_calculator_bot
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: expense-calculator-bot-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/telegram_expenses?schema=public
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run docker:start
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: expense-calculator-bot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: telegram_expenses
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telegram_expenses"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

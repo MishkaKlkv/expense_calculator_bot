@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "DialogStateType" ADD VALUE 'ADD_EXPENSE_WAITING_FOR_CASHBACK';
+
+-- AlterTable
+ALTER TABLE "expenses" ADD COLUMN     "cashback" DECIMAL(12,2) NOT NULL DEFAULT 0;

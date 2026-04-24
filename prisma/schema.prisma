@@ -1,0 +1,108 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Currency {
+  RUB
+  USD
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+}
+
+enum FamilyRole {
+  OWNER
+  MEMBER
+}
+
+enum DialogStateType {
+  IDLE
+  ADD_EXPENSE_WAITING_FOR_CATEGORY
+  ADD_EXPENSE_WAITING_FOR_DETAILS
+  ADD_EXPENSE_WAITING_FOR_CASHBACK
+  ADD_INCOME_WAITING_FOR_CATEGORY
+  ADD_INCOME_WAITING_FOR_DETAILS
+  EDIT_TRANSACTION_WAITING_FOR_FIELD
+  DELETE_TRANSACTION_CONFIRMATION
+}
+
+model TelegramUser {
+  id             String       @id @default(cuid())
+  telegramUserId BigInt       @unique @map("telegram_user_id")
+  username       String?
+  firstName      String?      @map("first_name")
+  lastName       String?      @map("last_name")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  expenses       Expense[]
+  dialogState    DialogState?
+  familyMembers  FamilyMember[]
+  createdFamilies FamilyAccount[] @relation("CreatedFamilies")
+
+  @@map("telegram_users")
+}
+
+model FamilyAccount {
+  id              String         @id @default(cuid())
+  name            String
+  inviteCode      String         @unique @map("invite_code")
+  createdByUserId String         @map("created_by_user_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  createdBy       TelegramUser   @relation("CreatedFamilies", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  members         FamilyMember[]
+
+  @@map("family_accounts")
+}
+
+model FamilyMember {
+  id              String        @id @default(cuid())
+  familyAccountId String        @map("family_account_id")
+  userId          String        @unique @map("user_id")
+  role            FamilyRole    @default(MEMBER)
+  joinedAt        DateTime      @default(now()) @map("joined_at")
+  familyAccount   FamilyAccount @relation(fields: [familyAccountId], references: [id], onDelete: Cascade)
+  user            TelegramUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([familyAccountId])
+  @@map("family_members")
+}
+
+model Expense {
+  id             String          @id @default(cuid())
+  userId         String          @map("user_id")
+  telegramUserId BigInt          @map("telegram_user_id")
+  type           TransactionType @default(EXPENSE)
+  category       String
+  description    String
+  amount         Decimal         @db.Decimal(12, 2)
+  cashback       Decimal         @default(0) @db.Decimal(12, 2)
+  currency       Currency
+  expenseDate    DateTime        @default(now()) @map("expense_date")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  user           TelegramUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId, expenseDate])
+  @@index([userId, type, expenseDate])
+  @@map("expenses")
+}
+
+model DialogState {
+  id        String          @id @default(cuid())
+  userId    String          @unique @map("user_id")
+  state     DialogStateType @default(IDLE)
+  payload   Json?
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  user      TelegramUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("dialog_states")
+}
