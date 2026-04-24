@@ -1,9 +1,11 @@
 const { upsertTelegramUser } = require('../../repositories/user.repository');
+const { isAdminTelegramUser } = require('../../services/admin.service');
 const {
   DEFAULT_TIMEZONE,
   disableDailyReminder,
   enableDailyReminder,
   getDailyReminder,
+  getReminderDueInfo,
   setDailyReminder,
 } = require('../../services/reminder.service');
 const { buildReminderMessage } = require('../../services/reminderScheduler.service');
@@ -24,6 +26,7 @@ function formatReminderStatus(reminder) {
     '',
     'Изменить время: /reminder 20:00',
     'Проверить отправку: /reminder_test',
+    'Проверить расписание: /reminder_check',
     'Выключить: /reminder_off',
     'Включить снова: /reminder_on',
   ].join('\n');
@@ -88,7 +91,41 @@ function registerReminderHandlers(bot) {
   });
 
   bot.command('reminder_test', async (ctx) => {
+    if (!isAdminTelegramUser(ctx)) {
+      await ctx.reply('Команда недоступна.');
+      return;
+    }
+
     await ctx.reply(buildReminderMessage());
+  });
+
+  bot.command('reminder_check', async (ctx) => {
+    if (!isAdminTelegramUser(ctx)) {
+      await ctx.reply('Команда недоступна.');
+      return;
+    }
+
+    const user = await upsertTelegramUser(ctx.from);
+    const reminder = await getDailyReminder(user.id);
+
+    if (!reminder) {
+      await ctx.reply('Напоминание не настроено. Включить: /reminder 20:00');
+      return;
+    }
+
+    const dueInfo = getReminderDueInfo(reminder);
+
+    await ctx.reply(
+      [
+        'Проверка напоминания:',
+        `Статус: ${reminder.enabled ? 'включено' : 'выключено'}`,
+        `Время напоминания: ${dueInfo.reminderTime}`,
+        `Текущее время (${dueInfo.timezone}): ${dueInfo.currentTime}`,
+        `Сегодня: ${dueInfo.currentDate}`,
+        `Последняя отправка: ${dueInfo.lastSentDate || 'не было'}`,
+        `Должно отправиться сейчас: ${dueInfo.isDue ? 'да' : 'нет'}`,
+      ].join('\n')
+    );
   });
 }
 

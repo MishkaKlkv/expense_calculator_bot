@@ -53,7 +53,7 @@ async function getTopBotEvents({ since, limit = 10 } = {}) {
     },
     orderBy: {
       _count: {
-        _all: 'desc',
+        id: 'desc',
       },
     },
     take: limit,

@@ -81,11 +81,20 @@ async function enableDailyReminder(userId) {
 async function getDueDailyReminders(date = new Date()) {
   const reminders = await findEnabledDailyReminders();
 
-  return reminders.filter((reminder) => {
-    const { date: today, time } = getZonedDateParts(date, reminder.timezone);
+  return reminders.filter((reminder) => getReminderDueInfo(reminder, date).isDue);
+}
 
-    return reminder.lastSentDate !== today && reminder.timeOfDay <= time;
-  });
+function getReminderDueInfo(reminder, date = new Date()) {
+  const { date: today, time } = getZonedDateParts(date, reminder.timezone);
+
+  return {
+    currentDate: today,
+    currentTime: time,
+    isDue: reminder.enabled && reminder.lastSentDate !== today && reminder.timeOfDay <= time,
+    lastSentDate: reminder.lastSentDate,
+    reminderTime: reminder.timeOfDay,
+    timezone: reminder.timezone,
+  };
 }
 
 async function markReminderSentForToday(reminder, date = new Date()) {
@@ -100,6 +109,7 @@ module.exports = {
   enableDailyReminder,
   getDailyReminder,
   getDueDailyReminders,
+  getReminderDueInfo,
   markReminderSentForToday,
   normalizeReminderTime,
   setDailyReminder,
