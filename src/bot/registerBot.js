@@ -7,6 +7,8 @@ const { registerRecentHandlers } = require('./handlers/recent.handler');
 const { registerReminderHandlers } = require('./handlers/reminder.handler');
 const { registerReportHandlers } = require('./handlers/report.handler');
 const { registerStatsHandlers } = require('./handlers/stats.handler');
+const { registerAdminHandlers } = require('./handlers/admin.handler');
+const { logBotEventFromContext } = require('../services/botEvent.service');
 
 function registerBot(bot) {
   bot.use(async (ctx, next) => {
@@ -15,9 +17,17 @@ function registerBot(bot) {
     const text = ctx.message?.text || ctx.callbackQuery?.data || '';
 
     console.log(`[bot:update] type=${updateType} user=${fromId} text="${text}"`);
+
+    try {
+      await logBotEventFromContext(ctx);
+    } catch (error) {
+      console.error('[bot:event] failed', error);
+    }
+
     return next();
   });
 
+  registerAdminHandlers(bot);
   registerMenuHandlers(bot);
   registerFamilyHandlers(bot);
   registerReminderHandlers(bot);

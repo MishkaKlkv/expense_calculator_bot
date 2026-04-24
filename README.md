@@ -119,6 +119,7 @@ BOT_TOKEN=telegram-bot-token
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/telegram_expenses?schema=public
 OPENAI_API_KEY=sk-your-openai-api-key
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+ADMIN_TELEGRAM_IDS=254527616
 NODE_ENV=development
 ```
 
@@ -176,6 +177,7 @@ BOT_TOKEN=telegram-bot-token
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/telegram_expenses?schema=public
 OPENAI_API_KEY=sk-your-openai-api-key
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+ADMIN_TELEGRAM_IDS=254527616
 NODE_ENV=development
 ```
 
@@ -221,6 +223,7 @@ BOT_TOKEN=telegram-bot-token
 DATABASE_URL=postgresql://user:password@host:5432/dbname?schema=public
 OPENAI_API_KEY=sk-your-openai-api-key
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+ADMIN_TELEGRAM_IDS=254527616
 NODE_ENV=production
 ```
 
@@ -246,6 +249,7 @@ npm run docker:start
 - `/reminder` - статус ежедневного напоминания.
 - `/reminder_off` - выключить ежедневное напоминание.
 - `/reminder_on` - включить ежедневное напоминание снова.
+- `/admin_stats` - статистика использования бота, доступна только Telegram ID из `ADMIN_TELEGRAM_IDS`.
 - `/edit` - редактировать свою операцию.
 - `/delete` - удалить свою операцию.
 - `/stats` - статистика за текущий месяц.

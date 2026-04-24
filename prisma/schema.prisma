@@ -122,3 +122,18 @@ model DailyReminder {
   @@index([enabled, timeOfDay])
   @@map("daily_reminders")
 }
+
+model BotEvent {
+  id             String   @id @default(cuid())
+  telegramUserId BigInt?  @map("telegram_user_id")
+  updateType     String   @map("update_type")
+  eventType      String   @map("event_type")
+  eventName      String?  @map("event_name")
+  payload        Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([telegramUserId, createdAt])
+  @@index([eventType, eventName, createdAt])
+  @@map("bot_events")
+}

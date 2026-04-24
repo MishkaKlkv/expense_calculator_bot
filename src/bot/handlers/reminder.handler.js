@@ -6,6 +6,7 @@ const {
   getDailyReminder,
   setDailyReminder,
 } = require('../../services/reminder.service');
+const { buildReminderMessage } = require('../../services/reminderScheduler.service');
 
 function formatReminderStatus(reminder) {
   if (!reminder) {
@@ -22,6 +23,7 @@ function formatReminderStatus(reminder) {
     `Часовой пояс: ${reminder.timezone}`,
     '',
     'Изменить время: /reminder 20:00',
+    'Проверить отправку: /reminder_test',
     'Выключить: /reminder_off',
     'Включить снова: /reminder_on',
   ].join('\n');
@@ -83,6 +85,10 @@ function registerReminderHandlers(bot) {
     }
 
     await showReminderStatus(ctx);
+  });
+
+  bot.command('reminder_test', async (ctx) => {
+    await ctx.reply(buildReminderMessage());
   });
 }
 

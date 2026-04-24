@@ -16,6 +16,7 @@ function buildReminderMessage() {
 
 function startReminderScheduler(bot) {
   let isRunning = false;
+  console.log('[reminder] scheduler started');
 
   async function tick() {
     if (isRunning) {
@@ -26,6 +27,10 @@ function startReminderScheduler(bot) {
 
     try {
       const reminders = await getDueDailyReminders();
+
+      if (reminders.length > 0) {
+        console.log(`[reminder] due reminders found: ${reminders.length}`);
+      }
 
       for (const reminder of reminders) {
         try {
@@ -60,3 +65,4 @@ function startReminderScheduler(bot) {
 }
 
 module.exports = { startReminderScheduler };
+module.exports.buildReminderMessage = buildReminderMessage;

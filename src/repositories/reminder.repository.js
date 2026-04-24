@@ -1,6 +1,6 @@
 const { prisma } = require('../db/prisma');
 
-async function upsertDailyReminder({ userId, timeOfDay, timezone }) {
+async function upsertDailyReminder({ userId, timeOfDay, timezone, lastSentDate }) {
   return prisma.dailyReminder.upsert({
     where: {
       userId,
@@ -10,11 +10,13 @@ async function upsertDailyReminder({ userId, timeOfDay, timezone }) {
       timeOfDay,
       timezone,
       enabled: true,
+      lastSentDate,
     },
     update: {
       timeOfDay,
       timezone,
       enabled: true,
+      lastSentDate,
     },
   });
 }
@@ -38,11 +40,10 @@ async function setDailyReminderEnabled({ userId, enabled }) {
   });
 }
 
-async function findDueDailyReminders({ timeOfDay }) {
+async function findEnabledDailyReminders() {
   return prisma.dailyReminder.findMany({
     where: {
       enabled: true,
-      timeOfDay,
     },
     include: {
       user: true,
@@ -63,7 +64,7 @@ async function markDailyReminderSent({ id, sentDate }) {
 
 module.exports = {
   findDailyReminderByUserId,
-  findDueDailyReminders,
+  findEnabledDailyReminders,
   markDailyReminderSent,
   setDailyReminderEnabled,
   upsertDailyReminder,

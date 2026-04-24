@@ -1,6 +1,6 @@
 const {
   findDailyReminderByUserId,
-  findDueDailyReminders,
+  findEnabledDailyReminders,
   markDailyReminderSent,
   setDailyReminderEnabled,
   upsertDailyReminder,
@@ -50,10 +50,13 @@ async function setDailyReminder({ userId, timeText, timezone = DEFAULT_TIMEZONE 
     return { ok: false, reason: 'INVALID_TIME' };
   }
 
+  const { date: today, time } = getZonedDateParts(new Date(), timezone);
+  const lastSentDate = timeOfDay <= time ? today : null;
   const reminder = await upsertDailyReminder({
     userId,
     timeOfDay,
     timezone,
+    lastSentDate,
   });
 
   return { ok: true, reminder };
@@ -76,13 +79,12 @@ async function enableDailyReminder(userId) {
 }
 
 async function getDueDailyReminders(date = new Date()) {
-  const { time } = getZonedDateParts(date, DEFAULT_TIMEZONE);
-  const reminders = await findDueDailyReminders({ timeOfDay: time });
+  const reminders = await findEnabledDailyReminders();
 
   return reminders.filter((reminder) => {
-    const { date: today } = getZonedDateParts(date, reminder.timezone);
+    const { date: today, time } = getZonedDateParts(date, reminder.timezone);
 
-    return reminder.lastSentDate !== today;
+    return reminder.lastSentDate !== today && reminder.timeOfDay <= time;
   });
 }
 
