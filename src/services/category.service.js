@@ -16,7 +16,7 @@ function normalizeCategoryName(name) {
 function normalizeCategoryType(type) {
   const normalized = type.trim().toUpperCase();
 
-  if (['EXPENSE', 'EXPENSES', 'РАСХОД', 'РАСХОДЫ'].includes(normalized)) {
+  if (['EXPENSE', 'EXPENSES', 'EXPENCE', 'EXPENCES', 'РАСХОД', 'РАСХОДЫ'].includes(normalized)) {
     return 'EXPENSE';
   }
 

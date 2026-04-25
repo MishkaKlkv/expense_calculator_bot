@@ -41,7 +41,7 @@ function getCategoryErrorText(reason) {
   const errors = {
     ALREADY_EXISTS: 'Такая категория уже есть.',
     EMPTY_NAME: 'Название категории не должно быть пустым.',
-    UNKNOWN_TYPE: 'Укажите тип: expense или income.',
+    UNKNOWN_TYPE: 'Укажите тип: расход или доход.',
     LAST_CATEGORY: 'Нельзя удалить последнюю категорию этого типа.',
   };
 
@@ -57,7 +57,7 @@ function registerCategoryHandlers(bot) {
     const result = await addUserCategory({ userId: user.id, type: type || '', name });
 
     if (!result.ok) {
-      await ctx.reply(`${getCategoryErrorText(result.reason)} Пример: /category_add expense Хобби`);
+      await ctx.reply(`${getCategoryErrorText(result.reason)} Пример: /category_add расход Хобби`);
       return;
     }
 
@@ -72,7 +72,7 @@ function registerCategoryHandlers(bot) {
     if (!result.ok) {
       await ctx.reply(
         result.reason
-          ? `${getCategoryErrorText(result.reason)} Пример: /category_delete expense Хобби`
+          ? `${getCategoryErrorText(result.reason)} Пример: /category_delete расход Хобби`
           : 'Категория не найдена.'
       );
       return;

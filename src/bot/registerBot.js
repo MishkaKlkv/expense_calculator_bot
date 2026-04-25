@@ -12,6 +12,36 @@ const { registerAdminHandlers } = require('./handlers/admin.handler');
 const { registerCategoryHandlers } = require('./handlers/category.handler');
 const { logBotEventFromContext } = require('../services/botEvent.service');
 
+const lastInlineKeyboardByChat = new Map();
+
+function getChatKey(ctx) {
+  return ctx.chat?.id ? String(ctx.chat.id) : null;
+}
+
+function hasInlineKeyboard(extra) {
+  return Array.isArray(extra?.reply_markup?.inline_keyboard);
+}
+
+async function hideLastInlineKeyboard(ctx) {
+  const chatKey = getChatKey(ctx);
+
+  if (!chatKey) {
+    return;
+  }
+
+  const messageId = lastInlineKeyboardByChat.get(chatKey);
+
+  if (!messageId) {
+    return;
+  }
+
+  await ctx.telegram
+    .editMessageReplyMarkup(ctx.chat.id, messageId, undefined, { inline_keyboard: [] })
+    .catch(() => {});
+
+  lastInlineKeyboardByChat.delete(chatKey);
+}
+
 function registerBot(bot) {
   bot.use(async (ctx, next) => {
     const updateType = ctx.updateType;
@@ -30,8 +60,32 @@ function registerBot(bot) {
   });
 
   bot.use(async (ctx, next) => {
+    const originalReply = ctx.reply.bind(ctx);
+
+    ctx.reply = async (...args) => {
+      const message = await originalReply(...args);
+      const extra = args[1];
+      const chatKey = getChatKey(ctx);
+
+      if (chatKey && hasInlineKeyboard(extra) && message?.message_id) {
+        lastInlineKeyboardByChat.set(chatKey, message.message_id);
+      }
+
+      return message;
+    };
+
     if (ctx.callbackQuery?.message) {
       await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
+      const chatKey = getChatKey(ctx);
+
+      if (
+        chatKey &&
+        lastInlineKeyboardByChat.get(chatKey) === ctx.callbackQuery.message.message_id
+      ) {
+        lastInlineKeyboardByChat.delete(chatKey);
+      }
+    } else if (ctx.message) {
+      await hideLastInlineKeyboard(ctx);
     }
 
     return next();
