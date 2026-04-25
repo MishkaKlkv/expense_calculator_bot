@@ -5,6 +5,7 @@ const {
   getCurrentMonthIncomeStats,
   getPreviousMonthBalance,
 } = require('../../services/stats.service');
+const { buildWeeklyReport } = require('../../services/weeklyReport.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { formatMoney } = require('../../utils/money');
 
@@ -187,11 +188,18 @@ async function sendMonthIncomeStats(ctx) {
   await ctx.reply(formatIncomeStats(stats));
 }
 
+async function sendWeeklyReport(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+
+  await ctx.reply(await buildWeeklyReport(user.id));
+}
+
 function registerStatsHandlers(bot) {
   bot.command('stats', sendMonthStats);
   bot.command('prev_month', sendPreviousMonthStats);
   bot.command('income', sendMonthIncomeStats);
   bot.command('balance', sendMonthBalance);
+  bot.command('weekly_report', sendWeeklyReport);
   bot.hears(replyLabels.STATS_MONTH, sendMonthStats);
 
   bot.action(actions.STATS_MONTH, async (ctx) => {

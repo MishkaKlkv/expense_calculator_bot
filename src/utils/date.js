@@ -27,6 +27,14 @@ function getCurrentWeekRange(now = new Date()) {
   return { start, end };
 }
 
+function getPreviousWeekRange(now = new Date()) {
+  const currentWeek = getCurrentWeekRange(now);
+  const start = new Date(currentWeek.start);
+  start.setDate(start.getDate() - 7);
+
+  return { start, end: currentWeek.start };
+}
+
 function formatDateTime(date) {
   return new Intl.DateTimeFormat('ru-RU', {
     day: '2-digit',
@@ -42,5 +50,6 @@ module.exports = {
   getCurrentMonthRange,
   getCurrentWeekRange,
   getPreviousMonthRange,
+  getPreviousWeekRange,
   getTodayRange,
 };

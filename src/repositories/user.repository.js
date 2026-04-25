@@ -27,4 +27,12 @@ async function upsertTelegramUser(from) {
   });
 }
 
-module.exports = { upsertTelegramUser };
+async function findAllTelegramUsers() {
+  return prisma.telegramUser.findMany({
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
+}
+
+module.exports = { findAllTelegramUsers, upsertTelegramUser };

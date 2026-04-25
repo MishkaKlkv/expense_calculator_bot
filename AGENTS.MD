@@ -31,6 +31,8 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - USD conversion is fetched in `src/services/exchangeRate.service.js` from the Bank of Russia XML daily endpoint and cached in memory.
 - `/income` should show income stats for the current month.
 - `/add_income` adds income.
+- `/weekly_report` shows the previous-week report; `src/services/weeklyReportScheduler.service.js` sends it every Monday at 10:00 `Europe/Moscow`.
+- Planned monthly payments are stored in `planned_payments` and managed by `/planned`, `/planned_add`, and `/planned_delete`.
 - `/cancel` resets the current dialog state.
 - `/reminder HH:MM` configures a persisted daily expense-entry reminder; `/reminder_off` disables it and `/reminder_on` re-enables it.
 - Reminder times are stored as `HH:MM` in `Europe/Moscow` by default and delivered by `src/services/reminderScheduler.service.js`.
