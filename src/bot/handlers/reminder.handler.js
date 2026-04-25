@@ -8,9 +8,14 @@ const {
   getReminderDueInfo,
   setDailyReminder,
 } = require('../../services/reminder.service');
-const { buildReminderMessage } = require('../../services/reminderScheduler.service');
+const {
+  buildReminderMessage,
+  runReminderTick,
+} = require('../../services/reminderScheduler.service');
 
-function formatReminderStatus(reminder) {
+function formatReminderStatus(reminder, options = {}) {
+  const { isAdmin = false } = options;
+
   if (!reminder) {
     return [
       'Ежедневное напоминание не настроено.',
@@ -19,24 +24,33 @@ function formatReminderStatus(reminder) {
     ].join('\n');
   }
 
-  return [
+  const lines = [
     `Ежедневное напоминание: ${reminder.enabled ? 'включено' : 'выключено'}`,
     `Время: ${reminder.timeOfDay}`,
     `Часовой пояс: ${reminder.timezone}`,
     '',
     'Изменить время: /reminder 20:00',
-    'Проверить отправку: /reminder_test',
-    'Проверить расписание: /reminder_check',
     'Выключить: /reminder_off',
     'Включить снова: /reminder_on',
-  ].join('\n');
+  ];
+
+  if (isAdmin) {
+    lines.push(
+      '',
+      'Проверить отправку: /reminder_test',
+      'Проверить расписание: /reminder_check',
+      'Запустить проверку сейчас: /reminder_run'
+    );
+  }
+
+  return lines.join('\n');
 }
 
 async function showReminderStatus(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   const reminder = await getDailyReminder(user.id);
 
-  await ctx.reply(formatReminderStatus(reminder));
+  await ctx.reply(formatReminderStatus(reminder, { isAdmin: isAdminTelegramUser(ctx) }));
 }
 
 function registerReminderHandlers(bot) {
@@ -46,7 +60,7 @@ function registerReminderHandlers(bot) {
 
     if (!timeText) {
       const reminder = await getDailyReminder(user.id);
-      await ctx.reply(formatReminderStatus(reminder));
+      await ctx.reply(formatReminderStatus(reminder, { isAdmin: isAdminTelegramUser(ctx) }));
       return;
     }
 
@@ -124,6 +138,24 @@ function registerReminderHandlers(bot) {
         `Сегодня: ${dueInfo.currentDate}`,
         `Последняя отправка: ${dueInfo.lastSentDate || 'не было'}`,
         `Должно отправиться сейчас: ${dueInfo.isDue ? 'да' : 'нет'}`,
+      ].join('\n')
+    );
+  });
+
+  bot.command('reminder_run', async (ctx) => {
+    if (!isAdminTelegramUser(ctx)) {
+      await ctx.reply('Команда недоступна.');
+      return;
+    }
+
+    const result = await runReminderTick(ctx, { forceLog: true });
+
+    await ctx.reply(
+      [
+        'Проверка отправки выполнена.',
+        `Готовы к отправке: ${result.due}`,
+        `Отправлено: ${result.sent}`,
+        `Ошибок: ${result.failed}`,
       ].join('\n')
     );
   });

@@ -24,7 +24,13 @@ async function shutdown(signal) {
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
+reminderScheduler = startReminderScheduler(bot);
+
 bot.launch().then(() => {
-  reminderScheduler = startReminderScheduler(bot);
   console.log('Expense bot is running');
+}).catch(async (error) => {
+  console.error('Failed to launch bot:', error);
+  reminderScheduler?.stop();
+  await prisma.$disconnect();
+  process.exit(1);
 });

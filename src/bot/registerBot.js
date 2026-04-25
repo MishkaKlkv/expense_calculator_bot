@@ -9,6 +9,7 @@ const { registerReminderHandlers } = require('./handlers/reminder.handler');
 const { registerReportHandlers } = require('./handlers/report.handler');
 const { registerStatsHandlers } = require('./handlers/stats.handler');
 const { registerAdminHandlers } = require('./handlers/admin.handler');
+const { registerCategoryHandlers } = require('./handlers/category.handler');
 const { logBotEventFromContext } = require('../services/botEvent.service');
 
 function registerBot(bot) {
@@ -28,7 +29,16 @@ function registerBot(bot) {
     return next();
   });
 
+  bot.use(async (ctx, next) => {
+    if (ctx.callbackQuery?.message) {
+      await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
+    }
+
+    return next();
+  });
+
   registerAdminHandlers(bot);
+  registerCategoryHandlers(bot);
   registerMenuHandlers(bot);
   registerFamilyHandlers(bot);
   registerReminderHandlers(bot);

@@ -22,6 +22,11 @@ enum FamilyRole {
   MEMBER
 }
 
+enum CategoryType {
+  EXPENSE
+  INCOME
+}
+
 enum DialogStateType {
   IDLE
   ADD_EXPENSE_WAITING_FOR_CATEGORY
@@ -44,10 +49,26 @@ model TelegramUser {
   expenses       Expense[]
   dialogState    DialogState?
   dailyReminder  DailyReminder?
+  categories     UserCategory[]
   familyMembers  FamilyMember[]
   createdFamilies FamilyAccount[] @relation("CreatedFamilies")
 
   @@map("telegram_users")
+}
+
+model UserCategory {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  type      CategoryType
+  name      String
+  sortOrder Int          @default(1000) @map("sort_order")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  user      TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, name])
+  @@index([userId, type])
+  @@map("user_categories")
 }
 
 model FamilyAccount {

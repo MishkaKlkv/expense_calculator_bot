@@ -3,6 +3,7 @@ const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   getCurrentMonthBalance,
   getCurrentMonthIncomeStats,
+  getPreviousMonthBalance,
 } = require('../../services/stats.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { formatMoney } = require('../../utils/money');
@@ -32,16 +33,16 @@ function formatCategoryRows(rows, emptyText) {
   return { lines, totals: totalLines };
 }
 
-function formatStats({ expenses, incomes }) {
+function formatStats({ expenses, incomes }, title = 'Статистика за текущий месяц') {
   if (expenses.length === 0 && incomes.length === 0) {
-    return 'За текущий месяц операций пока нет.';
+    return `${title}: операций пока нет.`;
   }
 
   const expenseStats = formatCategoryRows(expenses, 'Расходов пока нет.');
   const incomeStats = formatCategoryRows(incomes, 'Доходов пока нет.');
 
   return [
-    'Статистика за текущий месяц',
+    title,
     '',
     'Расходы:',
     expenseStats.lines.join('\n'),
@@ -165,6 +166,13 @@ async function sendMonthStats(ctx) {
   await ctx.reply(formatStats(stats));
 }
 
+async function sendPreviousMonthStats(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const stats = await getPreviousMonthBalance(user.id);
+
+  await ctx.reply(formatStats(stats, 'Статистика за прошлый месяц'));
+}
+
 async function sendMonthBalance(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   const balance = await getCurrentMonthBalance(user.id);
@@ -181,6 +189,7 @@ async function sendMonthIncomeStats(ctx) {
 
 function registerStatsHandlers(bot) {
   bot.command('stats', sendMonthStats);
+  bot.command('prev_month', sendPreviousMonthStats);
   bot.command('income', sendMonthIncomeStats);
   bot.command('balance', sendMonthBalance);
   bot.hears(replyLabels.STATS_MONTH, sendMonthStats);
@@ -188,6 +197,11 @@ function registerStatsHandlers(bot) {
   bot.action(actions.STATS_MONTH, async (ctx) => {
     await ctx.answerCbQuery();
     await sendMonthStats(ctx);
+  });
+
+  bot.action(actions.STATS_PREVIOUS_MONTH, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendPreviousMonthStats(ctx);
   });
 }
 

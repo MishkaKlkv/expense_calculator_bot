@@ -7,6 +7,7 @@ const {
   replyLabels,
 } = require('../keyboards');
 const { resetDialogState, setDialogState } = require('../../services/dialogState.service');
+const { getUserCategoryNames } = require('../../services/category.service');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 
 async function showMainMenu(ctx, message = 'Выберите действие:') {
@@ -24,6 +25,11 @@ function getHelpText() {
     '/balance - баланс за текущий месяц',
     '/income - доходы за текущий месяц',
     '/add_income - добавить доход',
+    '/categories - показать категории',
+    '/category_add expense НАЗВАНИЕ - добавить категорию расходов',
+    '/category_add income НАЗВАНИЕ - добавить категорию доходов',
+    '/category_delete expense НАЗВАНИЕ - удалить категорию расходов',
+    '/category_delete income НАЗВАНИЕ - удалить категорию доходов',
     '/reminder 20:00 - ежедневное напоминание о тратах',
     '/reminder - статус напоминания',
     '/reminder_off - выключить напоминание',
@@ -33,6 +39,7 @@ function getHelpText() {
     '/clear_month_expenses - очистить расходы за текущий месяц',
     '/clear_all_expenses - очистить все расходы',
     '/stats - статистика за текущий месяц',
+    '/prev_month - статистика за прошлый месяц',
     '/recent - последние траты',
     '/today - расходы за сегодня',
     '/week - расходы за неделю',
@@ -97,8 +104,9 @@ function registerMenuHandlers(bot) {
 
   async function startAddExpense(ctx) {
     const user = await upsertTelegramUser(ctx.from);
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'EXPENSE' });
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию расхода:', categoryKeyboard());
+    await ctx.reply('Выберите категорию расхода:', categoryKeyboard(categories));
   }
 
   bot.command('add', startAddExpense);
@@ -106,16 +114,18 @@ function registerMenuHandlers(bot) {
 
   bot.action(actions.ADD_EXPENSE, async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'EXPENSE' });
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию расхода:', categoryKeyboard());
+    await ctx.reply('Выберите категорию расхода:', categoryKeyboard(categories));
   });
 
   async function startAddIncome(ctx) {
     const user = await upsertTelegramUser(ctx.from);
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'INCOME' });
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard());
+    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
   }
 
   bot.command('add_income', startAddIncome);
@@ -123,10 +133,11 @@ function registerMenuHandlers(bot) {
 
   bot.action(actions.ADD_INCOME, async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'INCOME' });
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard());
+    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
   });
 
   bot.action(/^REPEAT_CATEGORY:(.+)$/u, async (ctx) => {

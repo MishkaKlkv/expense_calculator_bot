@@ -3,7 +3,7 @@ const {
   aggregateTransactionsByCategory,
   findRecentExpenses,
 } = require('../repositories/expense.repository');
-const { getCurrentMonthRange } = require('../utils/date');
+const { getCurrentMonthRange, getPreviousMonthRange } = require('../utils/date');
 
 async function getCurrentMonthStats(userId) {
   const { start, end } = getCurrentMonthRange();
@@ -19,6 +19,15 @@ async function getCurrentMonthIncomeStats(userId) {
 
 async function getCurrentMonthBalance(userId) {
   const { start, end } = getCurrentMonthRange();
+  return getMonthBalanceForRange({ userId, start, end });
+}
+
+async function getPreviousMonthBalance(userId) {
+  const { start, end } = getPreviousMonthRange();
+  return getMonthBalanceForRange({ userId, start, end });
+}
+
+async function getMonthBalanceForRange({ userId, start, end }) {
   const [expenses, incomes] = await Promise.all([
     aggregateTransactionsByCategory({ userId, start, end, type: 'EXPENSE' }),
     aggregateTransactionsByCategory({ userId, start, end, type: 'INCOME' }),
@@ -46,6 +55,7 @@ module.exports = {
   getCurrentMonthIncomeStats,
   getCurrentMonthStats,
   getCurrentMonthStatsForUsers,
+  getPreviousMonthBalance,
   getRecentExpenses,
   getRecentExpensesForUsers,
 };

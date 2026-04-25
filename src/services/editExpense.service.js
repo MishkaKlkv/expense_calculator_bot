@@ -3,7 +3,7 @@ const {
   findTransactionByIdForUser,
   updateTransactionByIdForUser,
 } = require('../repositories/expense.repository');
-const { EXPENSE_CATEGORIES, INCOME_CATEGORIES } = require('../constants/categories');
+const { findUserCategoryName } = require('./category.service');
 const { parseAmountWithCurrency } = require('./parser.service');
 
 async function getEditableExpenses(userId, limit = 10) {
@@ -14,16 +14,13 @@ async function getExpenseForEdit({ expenseId, userId }) {
   return findTransactionByIdForUser({ id: expenseId, userId });
 }
 
-function normalizeCategory(value, type = 'EXPENSE') {
-  const input = value.trim().toLowerCase();
-  const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-
-  return categories.find((category) => category.toLowerCase() === input) || null;
-}
-
-function parseEditValue({ field, value, expense }) {
+async function parseEditValue({ field, value, expense, userId }) {
   if (field === 'category') {
-    const category = normalizeCategory(value, expense.type);
+    const category = await findUserCategoryName({
+      userId,
+      type: expense.type,
+      name: value,
+    });
 
     if (!category) {
       return { ok: false, reason: 'UNKNOWN_CATEGORY' };
@@ -68,7 +65,7 @@ async function updateExpenseField({ expenseId, userId, field, value }) {
     return { ok: false, reason: 'NOT_FOUND' };
   }
 
-  const parsed = parseEditValue({ field, value, expense });
+  const parsed = await parseEditValue({ field, value, expense, userId });
 
   if (!parsed.ok) {
     return parsed;

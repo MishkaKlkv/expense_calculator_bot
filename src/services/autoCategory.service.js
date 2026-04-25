@@ -1,14 +1,16 @@
-const { EXPENSE_CATEGORIES } = require('../constants/categories');
+const { getUserCategoryNames } = require('./category.service');
 
-const CATEGORY_ALIASES = new Map(
-  EXPENSE_CATEGORIES.flatMap((category) => {
+function buildCategoryAliases(categories) {
+  return new Map(
+    categories.flatMap((category) => {
     const lower = category.toLowerCase();
     return [
       [lower, category],
       [lower.replace('ё', 'е'), category],
     ];
   })
-);
+  );
+}
 
 const KEYWORD_RULES = [
   ['Дети', ['дети', 'ребенок', 'ребёнок', 'садик', 'школа', 'игруш', 'подгуз', 'кружок']],
@@ -31,13 +33,14 @@ function normalize(value) {
   return value.toLowerCase().replace('ё', 'е').trim();
 }
 
-function getCategoryFromPrefix(text) {
+function getCategoryFromPrefix(text, categories) {
+  const categoryAliases = buildCategoryAliases(categories);
   const input = text.trim().replace(/\s+/g, ' ');
   const words = input.split(' ');
 
   for (let length = Math.min(2, words.length - 1); length >= 1; length -= 1) {
     const prefix = normalize(words.slice(0, length).join(' '));
-    const category = CATEGORY_ALIASES.get(prefix);
+    const category = categoryAliases.get(prefix);
 
     if (category) {
       const rest = words.slice(length).join(' ');
@@ -53,15 +56,20 @@ function getCategoryFromPrefix(text) {
   return null;
 }
 
-function inferCategory(text) {
+async function inferCategory(text, userId) {
+  const categories = await getUserCategoryNames({ userId, type: 'EXPENSE' });
   const normalizedText = normalize(text);
-  const prefixResult = getCategoryFromPrefix(text);
+  const prefixResult = getCategoryFromPrefix(text, categories);
 
   if (prefixResult) {
     return prefixResult;
   }
 
-  const rule = KEYWORD_RULES.find(([, keywords]) => {
+  const rule = KEYWORD_RULES.find(([category, keywords]) => {
+    if (!categories.includes(category)) {
+      return false;
+    }
+
     return keywords.some((keyword) => normalizedText.includes(normalize(keyword)));
   });
 

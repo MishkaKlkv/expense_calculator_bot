@@ -1,10 +1,10 @@
 const { Markup } = require('telegraf');
-const { EXPENSE_CATEGORIES, INCOME_CATEGORIES } = require('../constants/categories');
 
 const actions = {
   ADD_EXPENSE: 'ADD_EXPENSE',
   ADD_INCOME: 'ADD_INCOME',
   STATS_MONTH: 'STATS_MONTH',
+  STATS_PREVIOUS_MONTH: 'STATS_PREVIOUS_MONTH',
   RECENT_EXPENSES: 'RECENT_EXPENSES',
   DELETE_EXPENSE: 'DELETE_EXPENSE',
   EDIT_EXPENSE: 'EDIT_EXPENSE',
@@ -40,6 +40,9 @@ function mainMenuKeyboard() {
     ],
     [
       Markup.button.callback('Статистика за месяц', actions.STATS_MONTH),
+      Markup.button.callback('Прошлый месяц', actions.STATS_PREVIOUS_MONTH),
+    ],
+    [
       Markup.button.callback('Последние траты', actions.RECENT_EXPENSES),
     ],
     [
@@ -144,8 +147,8 @@ function afterIncomeKeyboard(category) {
   ]);
 }
 
-function categoryKeyboard() {
-  const buttons = EXPENSE_CATEGORIES.map((category) =>
+function categoryKeyboard(categories) {
+  const buttons = categories.map((category) =>
     Markup.button.callback(category, `CATEGORY:${category}`)
   );
   const rows = [];
@@ -159,8 +162,8 @@ function categoryKeyboard() {
   return Markup.inlineKeyboard(rows);
 }
 
-function incomeCategoryKeyboard() {
-  const buttons = INCOME_CATEGORIES.map((category) =>
+function incomeCategoryKeyboard(categories) {
+  const buttons = categories.map((category) =>
     Markup.button.callback(category, `INCOME_CATEGORY:${category}`)
   );
   const rows = [];

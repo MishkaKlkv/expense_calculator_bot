@@ -26,6 +26,7 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - Income rows should be saved with `type: 'INCOME'` and `cashback: '0'`.
 - `/add` adds expenses.
 - `/stats` shows current-month expense and income stats by category.
+- `/prev_month` shows previous-month expense and income stats by category.
 - `/balance` shows current-month income minus expenses by currency, plus RUB totals using the current USD/RUB rate.
 - USD conversion is fetched in `src/services/exchangeRate.service.js` from the Bank of Russia XML daily endpoint and cached in memory.
 - `/income` should show income stats for the current month.
@@ -33,9 +34,11 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - `/cancel` resets the current dialog state.
 - `/reminder HH:MM` configures a persisted daily expense-entry reminder; `/reminder_off` disables it and `/reminder_on` re-enables it.
 - Reminder times are stored as `HH:MM` in `Europe/Moscow` by default and delivered by `src/services/reminderScheduler.service.js`.
-- `/reminder_test` and `/reminder_check` are admin-only diagnostics guarded by `ADMIN_TELEGRAM_IDS`.
+- `/reminder_test`, `/reminder_check`, and `/reminder_run` are admin-only diagnostics guarded by `ADMIN_TELEGRAM_IDS`.
 - Usage events are stored in `bot_events`; `/admin_stats` is restricted to Telegram IDs from `ADMIN_TELEGRAM_IDS`.
 - Family account owners can rename the account with `/family_rename` and remove members from the `/family` owner controls.
+- User categories are stored in `user_categories`; defaults come from `src/constants/categories.js` and are created lazily for users that do not have categories yet.
+- Inline keyboards are removed after callback clicks by middleware in `src/bot/registerBot.js`.
 - Voice transcription code and dependencies may remain in the project, but user-facing help text should not advertise voice input unless API billing is intentionally enabled again.
 
 ## Development Commands

@@ -6,6 +6,7 @@ const {
 } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const { inferCategory } = require('../../services/autoCategory.service');
+const { getUserCategoryNames } = require('../../services/category.service');
 const {
   buildPendingExpenseFromMessage,
   createExpenseFromPending,
@@ -27,7 +28,8 @@ async function handleIncomeInput(ctx, inputText, user, dialogState) {
   console.log(`[income:input] user=${ctx.from.id} state=${dialogState.state} text="${inputText}"`);
 
   if (dialogState.state === 'ADD_INCOME_WAITING_FOR_CATEGORY') {
-    await ctx.reply('Сначала выберите категорию кнопкой:', incomeCategoryKeyboard());
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'INCOME' });
+    await ctx.reply('Сначала выберите категорию кнопкой:', incomeCategoryKeyboard(categories));
     return;
   }
 
@@ -79,7 +81,8 @@ async function handleExpenseInput(ctx, inputText) {
   console.log(`[expense:input] user=${ctx.from.id} state=${dialogState.state} text="${inputText}"`);
 
   if (dialogState.state === 'ADD_EXPENSE_WAITING_FOR_CATEGORY') {
-    await ctx.reply('Сначала выберите категорию кнопкой:', categoryKeyboard());
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'EXPENSE' });
+    await ctx.reply('Сначала выберите категорию кнопкой:', categoryKeyboard(categories));
     return;
   }
 
@@ -87,7 +90,7 @@ async function handleExpenseInput(ctx, inputText) {
     dialogState.state !== 'ADD_EXPENSE_WAITING_FOR_DETAILS' &&
     dialogState.state !== 'ADD_EXPENSE_WAITING_FOR_CASHBACK'
   ) {
-    const inferred = inferCategory(inputText);
+    const inferred = await inferCategory(inputText, user.id);
 
     if (!inferred) {
       await showMainMenu(
