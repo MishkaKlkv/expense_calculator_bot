@@ -1,13 +1,35 @@
+const { Markup } = require('telegraf');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   addPlannedPayment,
   deletePlannedPayment,
+  disablePlannedPaymentReminder,
+  enablePlannedPaymentReminder,
   getPlannedPayments,
 } = require('../../services/plannedPayment.service');
 const { formatMoney } = require('../../utils/money');
 
 function getShortId(id) {
   return id.slice(0, 8);
+}
+
+function findPaymentByIdPrefix(payments, idPrefix) {
+  if (!idPrefix) {
+    return null;
+  }
+
+  return payments.find((item) => item.id === idPrefix || item.id.startsWith(idPrefix)) || null;
+}
+
+function plannedPaymentReminderOfferKeyboard(paymentId) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('Напомнить в день платежа', `PLANNED_REMINDER_ON:${paymentId}`),
+    ],
+    [
+      Markup.button.callback('Не нужно', `PLANNED_REMINDER_SKIP:${paymentId}`),
+    ],
+  ]);
 }
 
 function formatPlannedPayments(payments) {
@@ -21,10 +43,11 @@ function formatPlannedPayments(payments) {
 
   const lines = payments.map((payment, index) => {
     const status = payment.enabled ? '' : ' выключен';
+    const reminder = payment.reminderEnabled ? ', напоминание включено' : ', без напоминания';
 
     return `${index + 1}. ${getShortId(payment.id)} | ${payment.dayOfMonth} число | ${
       payment.category
-    } | ${payment.description} | ${formatMoney(payment.amount, payment.currency)}${status}`;
+    } | ${payment.description} | ${formatMoney(payment.amount, payment.currency)}${status}${reminder}`;
   });
 
   return [
@@ -33,6 +56,8 @@ function formatPlannedPayments(payments) {
     lines.join('\n'),
     '',
     'Добавить: /planned_add 5 | Интернет | Домашний интернет | 700',
+    'Включить напоминание: /planned_reminder_on ID',
+    'Выключить напоминание: /planned_reminder_off ID',
     'Удалить: /planned_delete ID',
   ].join('\n');
 }
@@ -75,13 +100,18 @@ function registerPlannedPaymentHandlers(bot) {
         result.payment.category
       }, ${result.payment.description}, ${formatMoney(result.payment.amount, result.payment.currency)}`
     );
+
+    await ctx.reply(
+      'Создать напоминание об этом платеже? Оно придет в день платежа в 10:00.',
+      plannedPaymentReminderOfferKeyboard(result.payment.id)
+    );
   });
 
   bot.command('planned_delete', async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
     const idPrefix = ctx.message.text.replace('/planned_delete', '').trim();
     const payments = await getPlannedPayments(user.id);
-    const payment = payments.find((item) => item.id === idPrefix || item.id.startsWith(idPrefix));
+    const payment = findPaymentByIdPrefix(payments, idPrefix);
 
     if (!payment) {
       await ctx.reply('Плановый платеж не найден. Посмотреть список: /planned');
@@ -91,6 +121,59 @@ function registerPlannedPaymentHandlers(bot) {
     const result = await deletePlannedPayment({ userId: user.id, id: payment.id });
 
     await ctx.reply(result.ok ? 'Плановый платеж удален.' : 'Плановый платеж не найден.');
+  });
+
+  bot.command('planned_reminder_on', async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const idPrefix = ctx.message.text.replace('/planned_reminder_on', '').trim();
+    const payments = await getPlannedPayments(user.id);
+    const payment = findPaymentByIdPrefix(payments, idPrefix);
+
+    if (!payment) {
+      await ctx.reply('Плановый платеж не найден. Посмотреть список: /planned');
+      return;
+    }
+
+    const result = await enablePlannedPaymentReminder({ userId: user.id, id: payment.id });
+
+    await ctx.reply(
+      result.ok
+        ? 'Напоминание включено. Оно придет в день платежа в 10:00.'
+        : 'Плановый платеж не найден.'
+    );
+  });
+
+  bot.command('planned_reminder_off', async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const idPrefix = ctx.message.text.replace('/planned_reminder_off', '').trim();
+    const payments = await getPlannedPayments(user.id);
+    const payment = findPaymentByIdPrefix(payments, idPrefix);
+
+    if (!payment) {
+      await ctx.reply('Плановый платеж не найден. Посмотреть список: /planned');
+      return;
+    }
+
+    const result = await disablePlannedPaymentReminder({ userId: user.id, id: payment.id });
+
+    await ctx.reply(result.ok ? 'Напоминание выключено.' : 'Плановый платеж не найден.');
+  });
+
+  bot.action(/^PLANNED_REMINDER_ON:(.+)$/u, async (ctx) => {
+    await ctx.answerCbQuery();
+    const user = await upsertTelegramUser(ctx.from);
+    const result = await enablePlannedPaymentReminder({ userId: user.id, id: ctx.match[1] });
+
+    await ctx.reply(
+      result.ok
+        ? 'Готово. Напомню об этом платеже в день оплаты в 10:00.'
+        : 'Плановый платеж не найден.'
+    );
+  });
+
+  bot.action(/^PLANNED_REMINDER_SKIP:(.+)$/u, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply('Ок, напоминание не создаю.');
   });
 }
 

@@ -1,7 +1,11 @@
 const {
   createPlannedPayment,
   deletePlannedPaymentByIdForUser,
+  findPlannedPaymentById,
   findPlannedPayments,
+  findReminderEnabledPlannedPayments,
+  markPlannedPaymentReminderSent,
+  updatePlannedPaymentByIdForUser,
 } = require('../repositories/plannedPayment.repository');
 const { parseAmountWithCurrency } = require('./parser.service');
 const { findUserCategoryName } = require('./category.service');
@@ -79,6 +83,30 @@ async function deletePlannedPayment({ userId, id }) {
   return { ok: result.count > 0 };
 }
 
+async function enablePlannedPaymentReminder({ userId, id }) {
+  const result = await updatePlannedPaymentByIdForUser({
+    id,
+    userId,
+    data: {
+      reminderEnabled: true,
+    },
+  });
+
+  return { ok: result.count > 0 };
+}
+
+async function disablePlannedPaymentReminder({ userId, id }) {
+  const result = await updatePlannedPaymentByIdForUser({
+    id,
+    userId,
+    data: {
+      reminderEnabled: false,
+    },
+  });
+
+  return { ok: result.count > 0 };
+}
+
 function getPlannedPaymentDueDate(payment, now = new Date()) {
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -86,6 +114,48 @@ function getPlannedPaymentDueDate(payment, now = new Date()) {
   const day = Math.min(payment.dayOfMonth, lastDay);
 
   return new Date(year, month, day, 0, 0, 0, 0);
+}
+
+function getMoscowParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value])
+  );
+
+  return {
+    day: Number(parts.day),
+    daysInMonth: new Date(Number(parts.year), Number(parts.month), 0).getDate(),
+    monthKey: `${parts.year}-${parts.month}`,
+    time: `${parts.hour}:${parts.minute}`,
+  };
+}
+
+function isPlannedPaymentReminderDue(payment, date = new Date()) {
+  const parts = getMoscowParts(date);
+  const dueDay = Math.min(payment.dayOfMonth, parts.daysInMonth);
+
+  return (
+    payment.enabled &&
+    payment.reminderEnabled &&
+    payment.lastReminderSentMonth !== parts.monthKey &&
+    dueDay === parts.day &&
+    payment.reminderTimeOfDay <= parts.time
+  );
+}
+
+async function getDuePlannedPaymentReminders(date = new Date()) {
+  const payments = await findReminderEnabledPlannedPayments();
+
+  return payments.filter((payment) => isPlannedPaymentReminderDue(payment, date));
 }
 
 function getPlannedPaymentsDueInRange(payments, { start, end }) {
@@ -99,9 +169,15 @@ function getPlannedPaymentsDueInRange(payments, { start, end }) {
 module.exports = {
   addPlannedPayment,
   deletePlannedPayment,
+  disablePlannedPaymentReminder,
+  enablePlannedPaymentReminder,
+  findPlannedPaymentById,
+  getDuePlannedPaymentReminders,
   getEnabledPlannedPayments,
   getPlannedPaymentDueDate,
   getPlannedPayments,
   getPlannedPaymentsDueInRange,
+  isPlannedPaymentReminderDue,
+  markPlannedPaymentReminderSent,
   parsePlannedPaymentInput,
 };

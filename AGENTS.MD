@@ -33,6 +33,7 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - `/add_income` adds income.
 - `/weekly_report` shows the previous-week report; `src/services/weeklyReportScheduler.service.js` sends it every Monday at 10:00 `Europe/Moscow`.
 - Planned monthly payments are stored in `planned_payments` and managed by `/planned`, `/planned_add`, and `/planned_delete`.
+- Planned payment reminders are opt-in per payment and sent by `src/services/plannedPaymentReminderScheduler.service.js` on the payment day at 10:00 `Europe/Moscow`.
 - `/cancel` resets the current dialog state.
 - `/reminder HH:MM` configures a persisted daily expense-entry reminder; `/reminder_off` disables it and `/reminder_on` re-enables it.
 - Reminder times are stored as `HH:MM` in `Europe/Moscow` by default and delivered by `src/services/reminderScheduler.service.js`.
