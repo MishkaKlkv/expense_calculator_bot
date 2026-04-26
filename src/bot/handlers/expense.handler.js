@@ -29,7 +29,7 @@ async function handleIncomeInput(ctx, inputText, user, dialogState) {
 
   if (dialogState.state === 'ADD_INCOME_WAITING_FOR_CATEGORY') {
     const categories = await getUserCategoryNames({ userId: user.id, type: 'INCOME' });
-    await ctx.reply('Сначала выберите категорию кнопкой:', incomeCategoryKeyboard(categories));
+    await ctx.replyTemporary('Сначала выберите категорию кнопкой:', incomeCategoryKeyboard(categories));
     return;
   }
 
@@ -82,7 +82,7 @@ async function handleExpenseInput(ctx, inputText) {
 
   if (dialogState.state === 'ADD_EXPENSE_WAITING_FOR_CATEGORY') {
     const categories = await getUserCategoryNames({ userId: user.id, type: 'EXPENSE' });
-    await ctx.reply('Сначала выберите категорию кнопкой:', categoryKeyboard(categories));
+    await ctx.replyTemporary('Сначала выберите категорию кнопкой:', categoryKeyboard(categories));
     return;
   }
 
@@ -193,7 +193,7 @@ function registerExpenseHandlers(bot) {
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_DETAILS', { category });
-    await ctx.reply(
+    await ctx.replyTemporary(
       `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd`
     );
   });
@@ -204,7 +204,7 @@ function registerExpenseHandlers(bot) {
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
-    await ctx.reply(
+    await ctx.replyTemporary(
       `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd`
     );
   });

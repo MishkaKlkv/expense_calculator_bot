@@ -13,6 +13,7 @@ const actions = {
   FAMILY_RECENT: 'FAMILY_RECENT',
   CLEAR_MONTH_EXPENSES: 'CLEAR_MONTH_EXPENSES',
   CLEAR_ALL_EXPENSES: 'CLEAR_ALL_EXPENSES',
+  CHANGE_EXPENSE_CATEGORY: 'CHANGE_EXPENSE_CATEGORY',
   REPEAT_CATEGORY: 'REPEAT_CATEGORY',
   CANCEL: 'CANCEL',
 };
@@ -136,6 +137,7 @@ function editExpenseFieldKeyboard(expenseId) {
 function afterExpenseKeyboard(category) {
   return Markup.inlineKeyboard([
     [Markup.button.callback(`Добавить еще в ${category}`, `${actions.REPEAT_CATEGORY}:${category}`)],
+    [Markup.button.callback('Другая категория', actions.CHANGE_EXPENSE_CATEGORY)],
     [Markup.button.callback('Главное меню', 'SHOW_MENU')],
   ]);
 }

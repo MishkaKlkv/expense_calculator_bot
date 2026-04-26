@@ -11,8 +11,8 @@ const { getUserCategoryNames } = require('../../services/category.service');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 
 async function showMainMenu(ctx, message = 'Выберите действие:') {
-  await ctx.reply(message, mainMenuReplyKeyboard());
-  return ctx.reply('Быстрые кнопки:', mainMenuKeyboard());
+  await ctx.replyTemporary(message, mainMenuReplyKeyboard());
+  return ctx.replyTemporary('Быстрые кнопки:', mainMenuKeyboard());
 }
 
 function getHelpText() {
@@ -25,6 +25,10 @@ function getHelpText() {
     '/balance - баланс за текущий месяц',
     '/income - доходы за текущий месяц',
     '/add_income - добавить доход',
+    '/accounts - счета и накопления',
+    '/account_add Карта | доступно | 150000 - добавить счет',
+    '/account_set ID 175000 - изменить сумму счета',
+    '/account_delete ID - удалить счет',
     '/weekly_report - отчет за прошлую неделю',
     '/planned - плановые платежи',
     '/planned_add 5 | Интернет | Домашний интернет | 700 - добавить плановый платеж',
@@ -100,19 +104,19 @@ function registerMenuHandlers(bot) {
 
   bot.command('help', async (ctx) => {
     await upsertTelegramUser(ctx.from);
-    await ctx.reply(getHelpText());
+    await ctx.replyTemporary(getHelpText());
   });
 
   bot.hears(replyLabels.HELP, async (ctx) => {
     await upsertTelegramUser(ctx.from);
-    await ctx.reply(getHelpText());
+    await ctx.replyTemporary(getHelpText());
   });
 
   async function startAddExpense(ctx) {
     const user = await upsertTelegramUser(ctx.from);
     const categories = await getUserCategoryNames({ userId: user.id, type: 'EXPENSE' });
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию расхода:', categoryKeyboard(categories));
+    await ctx.replyTemporary('Выберите категорию расхода:', categoryKeyboard(categories));
   }
 
   bot.command('add', startAddExpense);
@@ -124,14 +128,23 @@ function registerMenuHandlers(bot) {
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию расхода:', categoryKeyboard(categories));
+    await ctx.replyTemporary('Выберите категорию расхода:', categoryKeyboard(categories));
+  });
+
+  bot.action(actions.CHANGE_EXPENSE_CATEGORY, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'EXPENSE' });
+
+    await ctx.answerCbQuery();
+    await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_CATEGORY');
+    await ctx.replyTemporary('Выберите категорию расхода:', categoryKeyboard(categories));
   });
 
   async function startAddIncome(ctx) {
     const user = await upsertTelegramUser(ctx.from);
     const categories = await getUserCategoryNames({ userId: user.id, type: 'INCOME' });
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
+    await ctx.replyTemporary('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
   }
 
   bot.command('add_income', startAddIncome);
@@ -143,7 +156,7 @@ function registerMenuHandlers(bot) {
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_CATEGORY');
-    await ctx.reply('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
+    await ctx.replyTemporary('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
   });
 
   bot.action(/^REPEAT_CATEGORY:(.+)$/u, async (ctx) => {
@@ -152,7 +165,7 @@ function registerMenuHandlers(bot) {
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_DETAILS', { category });
-    await ctx.reply(
+    await ctx.replyTemporary(
       `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd`
     );
   });
@@ -163,7 +176,7 @@ function registerMenuHandlers(bot) {
 
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
-    await ctx.reply(
+    await ctx.replyTemporary(
       `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd`
     );
   });

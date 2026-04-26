@@ -28,6 +28,8 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - `/stats` shows current-month expense and income stats by category.
 - `/prev_month` shows previous-month expense and income stats by category.
 - `/balance` shows current-month income minus expenses by currency, plus RUB totals using the current USD/RUB rate.
+- Accounts are stored in `accounts`; `AVAILABLE` means spendable money and `SAVINGS` means savings/investments/emergency money.
+- `/accounts`, `/account_add`, `/account_set`, and `/account_delete` manage user accounts.
 - USD conversion is fetched in `src/services/exchangeRate.service.js` from the Bank of Russia XML daily endpoint and cached in memory.
 - `/income` should show income stats for the current month.
 - `/add_income` adds income.

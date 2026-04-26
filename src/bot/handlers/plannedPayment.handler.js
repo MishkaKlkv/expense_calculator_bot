@@ -101,7 +101,7 @@ function registerPlannedPaymentHandlers(bot) {
       }, ${result.payment.description}, ${formatMoney(result.payment.amount, result.payment.currency)}`
     );
 
-    await ctx.reply(
+    await ctx.replyTemporary(
       'Создать напоминание об этом платеже? Оно придет в день платежа в 10:00.',
       plannedPaymentReminderOfferKeyboard(result.payment.id)
     );

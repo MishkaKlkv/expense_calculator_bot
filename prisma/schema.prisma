@@ -27,6 +27,11 @@ enum CategoryType {
   INCOME
 }
 
+enum AccountKind {
+  AVAILABLE
+  SAVINGS
+}
+
 enum DialogStateType {
   IDLE
   ADD_EXPENSE_WAITING_FOR_CATEGORY
@@ -51,11 +56,28 @@ model TelegramUser {
   dailyReminder   DailyReminder?
   weeklyReport    WeeklyReportDelivery?
   plannedPayments PlannedPayment[]
+  accounts        Account[]
   categories      UserCategory[]
   familyMembers   FamilyMember[]
   createdFamilies FamilyAccount[]       @relation("CreatedFamilies")
 
   @@map("telegram_users")
+}
+
+model Account {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  name      String
+  kind      AccountKind  @default(AVAILABLE)
+  balance   Decimal      @default(0) @db.Decimal(12, 2)
+  currency  Currency     @default(RUB)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  user      TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId, kind])
+  @@map("accounts")
 }
 
 model PlannedPayment {

@@ -10,10 +10,23 @@ const { registerReminderHandlers } = require('./handlers/reminder.handler');
 const { registerReportHandlers } = require('./handlers/report.handler');
 const { registerStatsHandlers } = require('./handlers/stats.handler');
 const { registerAdminHandlers } = require('./handlers/admin.handler');
+const { registerAccountHandlers } = require('./handlers/account.handler');
 const { registerCategoryHandlers } = require('./handlers/category.handler');
 const { logBotEventFromContext } = require('../services/botEvent.service');
+const { replyLabels } = require('./keyboards');
 
 const lastInlineKeyboardByChat = new Map();
+const temporaryMessagesByChat = new Map();
+const removableUserTexts = new Set([
+  replyLabels.ADD_EXPENSE,
+  replyLabels.ADD_INCOME,
+  replyLabels.STATS_MONTH,
+  replyLabels.RECENT_EXPENSES,
+  replyLabels.DELETE_EXPENSE,
+  replyLabels.EDIT_EXPENSE,
+  replyLabels.FAMILY_INFO,
+  replyLabels.HELP,
+]);
 
 function getChatKey(ctx) {
   return ctx.chat?.id ? String(ctx.chat.id) : null;
@@ -41,6 +54,54 @@ async function hideLastInlineKeyboard(ctx) {
     .catch(() => {});
 
   lastInlineKeyboardByChat.delete(chatKey);
+}
+
+function rememberTemporaryMessage(ctx, message) {
+  const chatKey = getChatKey(ctx);
+
+  if (!chatKey || !message?.message_id) {
+    return;
+  }
+
+  const messageIds = temporaryMessagesByChat.get(chatKey) || new Set();
+  messageIds.add(message.message_id);
+  temporaryMessagesByChat.set(chatKey, messageIds);
+}
+
+async function deleteTemporaryMessages(ctx) {
+  const chatKey = getChatKey(ctx);
+
+  if (!chatKey) {
+    return;
+  }
+
+  const messageIds = temporaryMessagesByChat.get(chatKey);
+
+  if (!messageIds || messageIds.size === 0) {
+    return;
+  }
+
+  await Promise.all(
+    Array.from(messageIds).map((messageId) => {
+      return ctx.telegram.deleteMessage(ctx.chat.id, messageId).catch(() => {});
+    })
+  );
+
+  temporaryMessagesByChat.delete(chatKey);
+}
+
+async function deleteRemovableUserMessage(ctx) {
+  const text = ctx.message?.text;
+
+  if (!text) {
+    return;
+  }
+
+  if (!text.startsWith('/') && !removableUserTexts.has(text)) {
+    return;
+  }
+
+  await ctx.deleteMessage().catch(() => {});
 }
 
 function registerBot(bot) {
@@ -75,6 +136,21 @@ function registerBot(bot) {
       return message;
     };
 
+    ctx.replyTemporary = async (...args) => {
+      const message = await originalReply(...args);
+      const extra = args[1];
+      const chatKey = getChatKey(ctx);
+
+      if (chatKey && hasInlineKeyboard(extra) && message?.message_id) {
+        lastInlineKeyboardByChat.set(chatKey, message.message_id);
+      }
+
+      rememberTemporaryMessage(ctx, message);
+      return message;
+    };
+
+    await deleteTemporaryMessages(ctx);
+
     if (ctx.callbackQuery?.message) {
       await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
       const chatKey = getChatKey(ctx);
@@ -87,12 +163,14 @@ function registerBot(bot) {
       }
     } else if (ctx.message) {
       await hideLastInlineKeyboard(ctx);
+      await deleteRemovableUserMessage(ctx);
     }
 
     return next();
   });
 
   registerAdminHandlers(bot);
+  registerAccountHandlers(bot);
   registerCategoryHandlers(bot);
   registerMenuHandlers(bot);
   registerFamilyHandlers(bot);

@@ -6,6 +6,7 @@ const {
   getPreviousMonthBalance,
 } = require('../../services/stats.service');
 const { buildWeeklyReport } = require('../../services/weeklyReport.service');
+const { getAccounts, summarizeAccounts } = require('../../services/account.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { formatMoney } = require('../../utils/money');
 
@@ -41,9 +42,12 @@ function formatStats({ expenses, incomes }, title = 'Статистика за �
 
   const expenseStats = formatCategoryRows(expenses, 'Расходов пока нет.');
   const incomeStats = formatCategoryRows(incomes, 'Доходов пока нет.');
+  const balanceTotals = subtractTotals(sumRowsByCurrency(incomes), sumRowsByCurrency(expenses));
 
   return [
     title,
+    '',
+    `Остаток: ${formatTotalsMap(balanceTotals)}`,
     '',
     'Расходы:',
     expenseStats.lines.join('\n'),
@@ -107,9 +111,48 @@ function convertTotalsToRub(totals, usdRate) {
   }, 0);
 }
 
-async function formatBalance({ expenses, incomes }) {
+function subtractTotals(incomeTotals, expenseTotals) {
+  const result = new Map();
+  const currencies = new Set([...incomeTotals.keys(), ...expenseTotals.keys()]);
+
+  currencies.forEach((currency) => {
+    result.set(currency, (incomeTotals.get(currency) || 0) - (expenseTotals.get(currency) || 0));
+  });
+
+  return result;
+}
+
+function formatTotalsMap(totals) {
+  const entries = Array.from(totals.entries()).filter(([, amount]) => Number(amount) !== 0);
+
+  if (entries.length === 0) {
+    return formatMoney(0, 'RUB');
+  }
+
+  return entries.map(([currency, amount]) => formatMoney(amount, currency)).join(', ');
+}
+
+function formatAccountsSummary(accounts) {
+  if (accounts.length === 0) {
+    return [
+      'Деньги сейчас:',
+      'Счета пока не добавлены. Добавить: /account_add Карта | доступно | 150000',
+    ].join('\n');
+  }
+
+  const summary = summarizeAccounts(accounts);
+
+  return [
+    'Деньги сейчас:',
+    `Всего: ${formatTotalsMap(summary.TOTAL)}`,
+    `Накоплено: ${formatTotalsMap(summary.SAVINGS)}`,
+    `Доступно: ${formatTotalsMap(summary.AVAILABLE)}`,
+  ].join('\n');
+}
+
+async function formatBalance({ expenses, incomes }, accounts = []) {
   if (expenses.length === 0 && incomes.length === 0) {
-    return 'За текущий месяц операций пока нет.';
+    return ['За текущий месяц операций пока нет.', '', formatAccountsSummary(accounts)].join('\n');
   }
 
   const expenseTotals = sumRowsByCurrency(expenses);
@@ -138,6 +181,7 @@ async function formatBalance({ expenses, incomes }) {
       `Итого доходов в RUB: ${formatMoney(incomeRub, 'RUB')}`,
       `Итоговый баланс в RUB: ${formatMoney(incomeRub - expenseRub, 'RUB')}`
     );
+    resultLines.push('', formatAccountsSummary(accounts));
     return resultLines.join('\n');
   }
 
@@ -157,6 +201,7 @@ async function formatBalance({ expenses, incomes }) {
     resultLines.push('', 'Итого в RUB не посчитал: не удалось получить текущий курс USD.');
   }
 
+  resultLines.push('', formatAccountsSummary(accounts));
   return resultLines.join('\n');
 }
 
@@ -176,9 +221,12 @@ async function sendPreviousMonthStats(ctx) {
 
 async function sendMonthBalance(ctx) {
   const user = await upsertTelegramUser(ctx.from);
-  const balance = await getCurrentMonthBalance(user.id);
+  const [balance, accounts] = await Promise.all([
+    getCurrentMonthBalance(user.id),
+    getAccounts(user.id),
+  ]);
 
-  await ctx.reply(await formatBalance(balance));
+  await ctx.reply(await formatBalance(balance, accounts));
 }
 
 async function sendMonthIncomeStats(ctx) {
