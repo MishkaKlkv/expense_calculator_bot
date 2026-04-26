@@ -43,6 +43,7 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - Usage events are stored in `bot_events`; `/admin_stats` is restricted to Telegram IDs from `ADMIN_TELEGRAM_IDS`.
 - Family account owners can rename the account with `/family_rename` and remove members from the `/family` owner controls.
 - User categories are stored in `user_categories`; defaults come from `src/constants/categories.js` and are created lazily for users that do not have categories yet.
+- Telegram slash-command suggestions and the default commands menu button are configured in `src/bot/botCommands.js`.
 - Inline keyboards are removed after callback clicks by middleware in `src/bot/registerBot.js`.
 - Voice transcription code and dependencies may remain in the project, but user-facing help text should not advertise voice input unless API billing is intentionally enabled again.
 

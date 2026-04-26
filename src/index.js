@@ -1,5 +1,6 @@
 const { Telegraf } = require('telegraf');
 const { env } = require('./config/env');
+const { configureBotCommands } = require('./bot/botCommands');
 const { prisma } = require('./db/prisma');
 const { registerBot } = require('./bot/registerBot');
 const {
@@ -36,7 +37,14 @@ reminderScheduler = startReminderScheduler(bot);
 weeklyReportScheduler = startWeeklyReportScheduler(bot);
 plannedPaymentReminderScheduler = startPlannedPaymentReminderScheduler(bot);
 
-bot.launch().then(() => {
+bot.launch().then(async () => {
+  try {
+    await configureBotCommands(bot);
+    console.log('[bot:commands] commands and menu button configured');
+  } catch (error) {
+    console.error('[bot:commands] failed to configure commands or menu button', error);
+  }
+
   console.log('Expense bot is running');
 }).catch(async (error) => {
   console.error('Failed to launch bot:', error);
