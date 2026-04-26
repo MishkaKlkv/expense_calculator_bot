@@ -11,6 +11,10 @@ const {
   getCurrentMonthStatsForUsers,
   getRecentExpensesForUsers,
 } = require('../../services/stats.service');
+const {
+  formatAchievementUnlocks,
+  unlockFeatureAchievement,
+} = require('../../services/gamification.service');
 const { formatDateTime } = require('../../utils/date');
 const { formatMoney } = require('../../utils/money');
 
@@ -152,12 +156,15 @@ function registerFamilyHandlers(bot) {
       return;
     }
 
+    const progress = await unlockFeatureAchievement(user.id, 'FIRST_FAMILY_ACCOUNT');
+
     await ctx.reply(
       [
         `Семейный счет "${result.family.name}" создан.`,
         `Инвайт-код для второго участника: ${result.family.inviteCode}`,
         '',
         `Другой член семьи может отправить боту: /family_join ${result.family.inviteCode}`,
+        formatAchievementUnlocks(progress.achievements),
       ].join('\n')
     );
   });
@@ -183,7 +190,13 @@ function registerFamilyHandlers(bot) {
       return;
     }
 
-    await ctx.reply(`Готово, вы присоединились к семейному счету "${result.family.name}".`);
+    const progress = await unlockFeatureAchievement(user.id, 'FIRST_FAMILY_ACCOUNT');
+
+    await ctx.reply(
+      `Готово, вы присоединились к семейному счету "${
+        result.family.name
+      }".${formatAchievementUnlocks(progress.achievements)}`
+    );
   });
 
   bot.command('family_rename', async (ctx) => {

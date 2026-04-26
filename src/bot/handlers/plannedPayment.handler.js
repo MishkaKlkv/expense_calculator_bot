@@ -1,4 +1,5 @@
 const { Markup } = require('telegraf');
+const { actions, plannedPaymentsManageKeyboard } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   addPlannedPayment,
@@ -7,6 +8,10 @@ const {
   enablePlannedPaymentReminder,
   getPlannedPayments,
 } = require('../../services/plannedPayment.service');
+const {
+  formatAchievementUnlocks,
+  unlockFeatureAchievement,
+} = require('../../services/gamification.service');
 const { formatMoney } = require('../../utils/money');
 
 function getShortId(id) {
@@ -55,10 +60,7 @@ function formatPlannedPayments(payments) {
     '',
     lines.join('\n'),
     '',
-    'Добавить: /planned_add 5 | Интернет | Домашний интернет | 700',
-    'Включить напоминание: /planned_reminder_on ID',
-    'Выключить напоминание: /planned_reminder_off ID',
-    'Удалить: /planned_delete ID',
+    'Действия доступны кнопками ниже.',
   ].join('\n');
 }
 
@@ -78,7 +80,7 @@ function registerPlannedPaymentHandlers(bot) {
     const user = await upsertTelegramUser(ctx.from);
     const payments = await getPlannedPayments(user.id);
 
-    await ctx.reply(formatPlannedPayments(payments));
+    await ctx.reply(formatPlannedPayments(payments), plannedPaymentsManageKeyboard());
   });
 
   bot.command('planned_add', async (ctx) => {
@@ -95,10 +97,15 @@ function registerPlannedPaymentHandlers(bot) {
       return;
     }
 
+    const progress = await unlockFeatureAchievement(user.id, 'FIRST_PLANNED_PAYMENT');
+
     await ctx.reply(
       `Плановый платеж добавлен: ${result.payment.dayOfMonth} число, ${
         result.payment.category
-      }, ${result.payment.description}, ${formatMoney(result.payment.amount, result.payment.currency)}`
+      }, ${result.payment.description}, ${formatMoney(
+        result.payment.amount,
+        result.payment.currency
+      )}${formatAchievementUnlocks(progress.achievements)}`
     );
 
     await ctx.replyTemporary(
@@ -174,6 +181,28 @@ function registerPlannedPaymentHandlers(bot) {
   bot.action(/^PLANNED_REMINDER_SKIP:(.+)$/u, async (ctx) => {
     await ctx.answerCbQuery();
     await ctx.reply('Ок, напоминание не создаю.');
+  });
+
+  bot.action(actions.PLANNED_ADD_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary(
+      'Добавить плановый платеж: /planned_add 5 | Интернет | Домашний интернет | 700'
+    );
+  });
+
+  bot.action(actions.PLANNED_DELETE_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Удалить плановый платеж: /planned_delete ID');
+  });
+
+  bot.action(actions.PLANNED_REMINDER_ON_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Включить напоминание: /planned_reminder_on ID');
+  });
+
+  bot.action(actions.PLANNED_REMINDER_OFF_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Выключить напоминание: /planned_reminder_off ID');
   });
 }
 

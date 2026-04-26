@@ -1,12 +1,21 @@
 const { prisma } = require('../db/prisma');
 
 async function upsertTelegramUser(from) {
-  return prisma.telegramUser.upsert({
+  const telegramUserId = BigInt(from.id);
+  const existing = await prisma.telegramUser.findUnique({
     where: {
-      telegramUserId: BigInt(from.id),
+      telegramUserId,
+    },
+    select: {
+      id: true,
+    },
+  });
+  const user = await prisma.telegramUser.upsert({
+    where: {
+      telegramUserId,
     },
     create: {
-      telegramUserId: BigInt(from.id),
+      telegramUserId,
       username: from.username || null,
       firstName: from.first_name || null,
       lastName: from.last_name || null,
@@ -25,6 +34,11 @@ async function upsertTelegramUser(from) {
       dialogState: true,
     },
   });
+
+  return {
+    ...user,
+    isNewUser: !existing,
+  };
 }
 
 async function findAllTelegramUsers() {

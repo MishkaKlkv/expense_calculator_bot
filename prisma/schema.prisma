@@ -32,6 +32,11 @@ enum AccountKind {
   SAVINGS
 }
 
+enum TrackedDaySource {
+  TRANSACTION
+  MANUAL_DONE
+}
+
 enum DialogStateType {
   IDLE
   ADD_EXPENSE_WAITING_FOR_CATEGORY
@@ -57,11 +62,54 @@ model TelegramUser {
   weeklyReport    WeeklyReportDelivery?
   plannedPayments PlannedPayment[]
   accounts        Account[]
+  gamification    UserGamification?
+  trackedDays     TrackedDay[]
+  achievements    UserAchievement[]
   categories      UserCategory[]
   familyMembers   FamilyMember[]
   createdFamilies FamilyAccount[]       @relation("CreatedFamilies")
 
   @@map("telegram_users")
+}
+
+model UserGamification {
+  id              String       @id @default(cuid())
+  userId          String       @unique @map("user_id")
+  xp              Int          @default(0)
+  currentStreak   Int          @default(0) @map("current_streak")
+  bestStreak      Int          @default(0) @map("best_streak")
+  lastTrackedDate String?      @map("last_tracked_date")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  user            TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_gamification")
+}
+
+model TrackedDay {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  dateKey   String           @map("date_key")
+  source    TrackedDaySource
+  xpAwarded Int              @default(0) @map("xp_awarded")
+  createdAt DateTime         @default(now()) @map("created_at")
+  user      TelegramUser     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dateKey])
+  @@index([userId, dateKey])
+  @@map("tracked_days")
+}
+
+model UserAchievement {
+  id         String       @id @default(cuid())
+  userId     String       @map("user_id")
+  code       String
+  unlockedAt DateTime     @default(now()) @map("unlocked_at")
+  user       TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, code])
+  @@index([userId])
+  @@map("user_achievements")
 }
 
 model Account {

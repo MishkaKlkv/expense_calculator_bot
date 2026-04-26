@@ -5,6 +5,7 @@ const {
   markWeeklyReportSent,
 } = require('../repositories/weeklyReport.repository');
 const { getEnabledPlannedPayments } = require('./plannedPayment.service');
+const { getTrackedDaysForRange, shiftDateKey } = require('./gamification.service');
 const { formatMoney } = require('../utils/money');
 
 const WEEKLY_REPORT_TIMEZONE = 'Europe/Moscow';
@@ -172,6 +173,14 @@ async function buildWeeklyReport(userId, date = new Date()) {
     }),
     getEnabledPlannedPayments(userId),
   ]);
+  const previousWeekStartKey = shiftDateKey(dueInfo.weekKey, -7);
+  const trackedDays = await getTrackedDaysForRange({
+    userId,
+    startDateKey: previousWeekStartKey,
+    endDateKey: dueInfo.weekKey,
+  });
+  const trackedDaysCount = trackedDays.length;
+  const trackedDaysXp = trackedDays.reduce((sum, day) => sum + day.xpAwarded, 0);
   const currentWeekEnd = new Date(dueInfo.periodEnd.getTime() + 7 * 24 * 60 * 60 * 1000);
   const duePayments = getPlannedPaymentsDueInMoscowRange(plannedPayments, {
     start: dueInfo.periodEnd,
@@ -200,6 +209,10 @@ async function buildWeeklyReport(userId, date = new Date()) {
     '',
     `Итого расходов: ${formatTotals(expenses)}`,
     `Итого доходов: ${formatTotals(incomes)}`,
+    '',
+    'Прогресс учета:',
+    `Учтено дней: ${trackedDaysCount} из 7`,
+    `XP за учет: +${trackedDaysXp}`,
     '',
     'Расходы по категориям:',
     formatCategoryRows(expenses, 'Расходов не было.').join('\n'),

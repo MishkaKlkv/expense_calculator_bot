@@ -3,6 +3,7 @@ const { registerDeleteExpenseHandlers } = require('./handlers/deleteExpense.hand
 const { registerEditExpenseHandlers } = require('./handlers/editExpense.handler');
 const { registerExpenseHandlers } = require('./handlers/expense.handler');
 const { registerFamilyHandlers } = require('./handlers/family.handler');
+const { registerGamificationHandlers } = require('./handlers/gamification.handler');
 const { registerMenuHandlers } = require('./handlers/menu.handler');
 const { registerRecentHandlers } = require('./handlers/recent.handler');
 const { registerPlannedPaymentHandlers } = require('./handlers/plannedPayment.handler');
@@ -172,6 +173,7 @@ function registerBot(bot) {
   registerAdminHandlers(bot);
   registerAccountHandlers(bot);
   registerCategoryHandlers(bot);
+  registerGamificationHandlers(bot);
   registerMenuHandlers(bot);
   registerFamilyHandlers(bot);
   registerReminderHandlers(bot);

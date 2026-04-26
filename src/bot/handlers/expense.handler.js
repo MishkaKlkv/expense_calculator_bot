@@ -21,8 +21,18 @@ const {
   setDialogState,
 } = require('../../services/dialogState.service');
 const { transcribeTelegramVoice } = require('../../services/transcription.service');
+const {
+  formatGamificationResult,
+  recordTransactionDay,
+} = require('../../services/gamification.service');
 const { formatMoney } = require('../../utils/money');
 const { showMainMenu } = require('./menu.handler');
+
+async function buildGamificationProgressText(userId) {
+  const progress = await recordTransactionDay(userId);
+
+  return formatGamificationResult(progress);
+}
 
 async function handleIncomeInput(ctx, inputText, user, dialogState) {
   console.log(`[income:input] user=${ctx.from.id} state=${dialogState.state} text="${inputText}"`);
@@ -55,13 +65,14 @@ async function handleIncomeInput(ctx, inputText, user, dialogState) {
     user,
     pendingIncome: result.pendingIncome,
   });
+  const progressText = await buildGamificationProgressText(user.id);
 
   await resetDialogState(user.id);
   await ctx.reply(
     `Сохранил доход: ${saved.income.description}, ${formatMoney(
       saved.income.amount,
       saved.income.currency
-    )}, ${saved.income.category}`,
+    )}, ${saved.income.category}${progressText}`,
     afterIncomeKeyboard(saved.income.category)
   );
 }
@@ -116,13 +127,14 @@ async function handleExpenseInput(ctx, inputText) {
       user,
       pendingExpense: result.pendingExpense,
     });
+    const progressText = await buildGamificationProgressText(user.id);
 
     await resetDialogState(user.id);
     await ctx.reply(
       `Сохранил: ${saved.expense.description}, ${formatMoney(
         saved.expense.amount,
         saved.expense.currency
-      )}, ${saved.expense.category}`,
+      )}, ${saved.expense.category}${progressText}`,
       afterExpenseKeyboard(saved.expense.category)
     );
     return;
@@ -141,13 +153,14 @@ async function handleExpenseInput(ctx, inputText) {
       user,
       pendingExpense,
     });
+    const progressText = await buildGamificationProgressText(user.id);
 
     await resetDialogState(user.id);
     await ctx.reply(
       `Сохранил: ${result.expense.description}, ${formatMoney(
         result.expense.amount,
         result.expense.currency
-      )}, ${result.expense.category}`,
+      )}, ${result.expense.category}${progressText}`,
       afterExpenseKeyboard(result.expense.category)
     );
     return;
@@ -175,13 +188,14 @@ async function handleExpenseInput(ctx, inputText) {
     user,
     pendingExpense: result.pendingExpense,
   });
+  const progressText = await buildGamificationProgressText(user.id);
 
   await resetDialogState(user.id);
   await ctx.reply(
     `Сохранил: ${saved.expense.description}, ${formatMoney(
       saved.expense.amount,
       saved.expense.currency
-    )}, ${saved.expense.category}`,
+    )}, ${saved.expense.category}${progressText}`,
     afterExpenseKeyboard(saved.expense.category)
   );
 }

@@ -1,3 +1,4 @@
+const { actions, categoriesManageKeyboard } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   addUserCategory,
@@ -5,6 +6,10 @@ const {
   getUserCategoryNames,
   normalizeCategoryType,
 } = require('../../services/category.service');
+const {
+  formatAchievementUnlocks,
+  unlockFeatureAchievement,
+} = require('../../services/gamification.service');
 
 function getTypeLabel(type) {
   return type === 'INCOME' ? 'доходов' : 'расходов';
@@ -33,7 +38,8 @@ async function sendCategories(ctx) {
       '',
       'Категории доходов:',
       incomes.join(', '),
-    ].join('\n')
+    ].join('\n'),
+    categoriesManageKeyboard()
   );
 }
 
@@ -61,7 +67,13 @@ function registerCategoryHandlers(bot) {
       return;
     }
 
-    await ctx.reply(`Категория ${getTypeLabel(result.category.type)} добавлена: ${result.category.name}`);
+    const progress = await unlockFeatureAchievement(user.id, 'FIRST_CATEGORY');
+
+    await ctx.reply(
+      `Категория ${getTypeLabel(result.category.type)} добавлена: ${
+        result.category.name
+      }${formatAchievementUnlocks(progress.achievements)}`
+    );
   });
 
   bot.command('category_delete', async (ctx) => {
@@ -79,6 +91,26 @@ function registerCategoryHandlers(bot) {
     }
 
     await ctx.reply('Категория удалена.');
+  });
+
+  bot.action(actions.CATEGORY_ADD_EXPENSE_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Добавить категорию расходов: /category_add расход Животные');
+  });
+
+  bot.action(actions.CATEGORY_ADD_INCOME_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Добавить категорию доходов: /category_add доход Подработка');
+  });
+
+  bot.action(actions.CATEGORY_DELETE_EXPENSE_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Удалить категорию расходов: /category_delete расход Животные');
+  });
+
+  bot.action(actions.CATEGORY_DELETE_INCOME_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Удалить категорию доходов: /category_delete доход Подработка');
   });
 }
 

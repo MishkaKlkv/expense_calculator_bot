@@ -25,6 +25,8 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - Cashback is tracked as regular income in the `Кешбек` income category, not as a per-expense field in user-facing flows.
 - Income rows should be saved with `type: 'INCOME'` and `cashback: '0'`.
 - `/add` adds expenses.
+- `/profile`, `/streak`, and `/done` are gamification commands. `/done` marks today or yesterday as honestly tracked with no expenses; do not encourage fake transactions.
+- Gamification state is stored in `user_gamification`, `tracked_days`, and `user_achievements`; transaction days are awarded from the expense/income save flow.
 - `/stats` shows current-month expense and income stats by category.
 - `/prev_month` shows previous-month expense and income stats by category.
 - `/balance` shows current-month income minus expenses by currency, plus RUB totals using the current USD/RUB rate.
@@ -44,6 +46,7 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - Family account owners can rename the account with `/family_rename` and remove members from the `/family` owner controls.
 - User categories are stored in `user_categories`; defaults come from `src/constants/categories.js` and are created lazily for users that do not have categories yet.
 - Telegram slash-command suggestions and the default commands menu button are configured in `src/bot/botCommands.js`.
+- Keep `/help` short; detailed actions for reminders, planned payments, accounts, and categories should live in inline keyboards inside their section commands.
 - Inline keyboards are removed after callback clicks by middleware in `src/bot/registerBot.js`.
 - Voice transcription code and dependencies may remain in the project, but user-facing help text should not advertise voice input unless API billing is intentionally enabled again.
 

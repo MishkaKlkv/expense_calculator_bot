@@ -1,3 +1,4 @@
+const { accountsManageKeyboard, actions } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   addAccount,
@@ -6,6 +7,10 @@ const {
   setAccountBalance,
   summarizeAccounts,
 } = require('../../services/account.service');
+const {
+  formatAchievementUnlocks,
+  unlockFeatureAchievement,
+} = require('../../services/gamification.service');
 const { formatMoney } = require('../../utils/money');
 
 function getShortId(id) {
@@ -60,9 +65,7 @@ function formatAccounts(accounts) {
     '',
     accountLines.join('\n'),
     '',
-    'Добавить: /account_add Карта | доступно | 150000',
-    'Изменить сумму: /account_set ID 175000',
-    'Удалить: /account_delete ID',
+    'Действия доступны кнопками ниже.',
   ].join('\n');
 }
 
@@ -83,7 +86,7 @@ function registerAccountHandlers(bot) {
     const user = await upsertTelegramUser(ctx.from);
     const accounts = await getAccounts(user.id);
 
-    await ctx.reply(formatAccounts(accounts));
+    await ctx.reply(formatAccounts(accounts), accountsManageKeyboard());
   });
 
   bot.command('account_add', async (ctx) => {
@@ -98,10 +101,14 @@ function registerAccountHandlers(bot) {
       return;
     }
 
+    const progress = await unlockFeatureAchievement(user.id, 'FIRST_ACCOUNT');
+
     await ctx.reply(
       `Счет добавлен: ${result.account.name}, ${getKindLabel(
         result.account.kind
-      )}, ${formatMoney(result.account.balance, result.account.currency)}`
+      )}, ${formatMoney(result.account.balance, result.account.currency)}${formatAchievementUnlocks(
+        progress.achievements
+      )}`
     );
   });
 
@@ -139,6 +146,27 @@ function registerAccountHandlers(bot) {
     const result = await deleteAccount({ userId: user.id, id: account.id });
 
     await ctx.reply(result.ok ? 'Счет удален.' : 'Счет не найден.');
+  });
+
+  bot.action(actions.ACCOUNT_ADD_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary(
+      [
+        'Добавить счет:',
+        '/account_add Карта | доступно | 150000',
+        '/account_add Вклад | накопления | 200000',
+      ].join('\n')
+    );
+  });
+
+  bot.action(actions.ACCOUNT_SET_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Изменить сумму счета: /account_set ID 175000');
+  });
+
+  bot.action(actions.ACCOUNT_DELETE_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.replyTemporary('Удалить счет: /account_delete ID');
   });
 }
 

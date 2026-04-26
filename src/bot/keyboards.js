@@ -14,6 +14,23 @@ const actions = {
   CLEAR_MONTH_EXPENSES: 'CLEAR_MONTH_EXPENSES',
   CLEAR_ALL_EXPENSES: 'CLEAR_ALL_EXPENSES',
   CHANGE_EXPENSE_CATEGORY: 'CHANGE_EXPENSE_CATEGORY',
+  ACCOUNT_ADD_HELP: 'ACCOUNT_ADD_HELP',
+  ACCOUNT_SET_HELP: 'ACCOUNT_SET_HELP',
+  ACCOUNT_DELETE_HELP: 'ACCOUNT_DELETE_HELP',
+  CATEGORY_ADD_EXPENSE_HELP: 'CATEGORY_ADD_EXPENSE_HELP',
+  CATEGORY_ADD_INCOME_HELP: 'CATEGORY_ADD_INCOME_HELP',
+  CATEGORY_DELETE_EXPENSE_HELP: 'CATEGORY_DELETE_EXPENSE_HELP',
+  CATEGORY_DELETE_INCOME_HELP: 'CATEGORY_DELETE_INCOME_HELP',
+  PLANNED_ADD_HELP: 'PLANNED_ADD_HELP',
+  PLANNED_DELETE_HELP: 'PLANNED_DELETE_HELP',
+  PLANNED_REMINDER_ON_HELP: 'PLANNED_REMINDER_ON_HELP',
+  PLANNED_REMINDER_OFF_HELP: 'PLANNED_REMINDER_OFF_HELP',
+  REMINDER_CHANGE_HELP: 'REMINDER_CHANGE_HELP',
+  REMINDER_OFF: 'REMINDER_OFF',
+  REMINDER_ON: 'REMINDER_ON',
+  REMINDER_TEST: 'REMINDER_TEST',
+  REMINDER_CHECK: 'REMINDER_CHECK',
+  REMINDER_RUN: 'REMINDER_RUN',
   REPEAT_CATEGORY: 'REPEAT_CATEGORY',
   CANCEL: 'CANCEL',
 };
@@ -196,10 +213,68 @@ function familyOwnerKeyboard(members, ownerUserId) {
   return Markup.inlineKeyboard(rows);
 }
 
+function accountsManageKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('Добавить счет', actions.ACCOUNT_ADD_HELP)],
+    [
+      Markup.button.callback('Изменить сумму', actions.ACCOUNT_SET_HELP),
+      Markup.button.callback('Удалить счет', actions.ACCOUNT_DELETE_HELP),
+    ],
+  ]);
+}
+
+function categoriesManageKeyboard() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('Добавить расход', actions.CATEGORY_ADD_EXPENSE_HELP),
+      Markup.button.callback('Добавить доход', actions.CATEGORY_ADD_INCOME_HELP),
+    ],
+    [
+      Markup.button.callback('Удалить расход', actions.CATEGORY_DELETE_EXPENSE_HELP),
+      Markup.button.callback('Удалить доход', actions.CATEGORY_DELETE_INCOME_HELP),
+    ],
+  ]);
+}
+
+function plannedPaymentsManageKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('Добавить платеж', actions.PLANNED_ADD_HELP)],
+    [
+      Markup.button.callback('Напоминание вкл.', actions.PLANNED_REMINDER_ON_HELP),
+      Markup.button.callback('Напоминание выкл.', actions.PLANNED_REMINDER_OFF_HELP),
+    ],
+    [Markup.button.callback('Удалить платеж', actions.PLANNED_DELETE_HELP)],
+  ]);
+}
+
+function reminderManageKeyboard(options = {}) {
+  const { enabled = false, isAdmin = false } = options;
+  const rows = [
+    [Markup.button.callback('Изменить время', actions.REMINDER_CHANGE_HELP)],
+    [
+      enabled
+        ? Markup.button.callback('Выключить', actions.REMINDER_OFF)
+        : Markup.button.callback('Включить', actions.REMINDER_ON),
+    ],
+  ];
+
+  if (isAdmin) {
+    rows.push([
+      Markup.button.callback('Тест', actions.REMINDER_TEST),
+      Markup.button.callback('Расписание', actions.REMINDER_CHECK),
+    ]);
+    rows.push([Markup.button.callback('Запустить проверку', actions.REMINDER_RUN)]);
+  }
+
+  return Markup.inlineKeyboard(rows);
+}
+
 module.exports = {
   actions,
+  accountsManageKeyboard,
   afterExpenseKeyboard,
   afterIncomeKeyboard,
+  categoriesManageKeyboard,
   categoryKeyboard,
   clearExpensesConfirmKeyboard,
   deleteExpenseConfirmKeyboard,
@@ -210,5 +285,7 @@ module.exports = {
   incomeCategoryKeyboard,
   mainMenuKeyboard,
   mainMenuReplyKeyboard,
+  plannedPaymentsManageKeyboard,
+  reminderManageKeyboard,
   replyLabels,
 };
