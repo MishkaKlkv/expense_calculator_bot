@@ -11,7 +11,7 @@ const { getUserCategoryNames } = require('../../services/category.service');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 
 async function showMainMenu(ctx, message = 'Выберите действие:') {
-  await ctx.replyTemporary(message, mainMenuReplyKeyboard());
+  await ctx.reply(message, mainMenuReplyKeyboard());
   return ctx.replyTemporary('Быстрые кнопки:', mainMenuKeyboard());
 }
 

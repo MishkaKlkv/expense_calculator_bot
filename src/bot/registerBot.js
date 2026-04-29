@@ -15,12 +15,10 @@ const { registerAccountHandlers } = require('./handlers/account.handler');
 const { registerCategoryHandlers } = require('./handlers/category.handler');
 const { configureChatMenuButton } = require('./botCommands');
 const { logBotEventFromContext } = require('../services/botEvent.service');
-const { replyLabels } = require('./keyboards');
+const { mainMenuReplyKeyboard, replyLabels } = require('./keyboards');
 
 const lastInlineKeyboardByChat = new Map();
 const temporaryMessagesByChat = new Map();
-const chatMenuButtonConfiguredAt = new Map();
-const CHAT_MENU_BUTTON_REFRESH_MS = 6 * 60 * 60 * 1000;
 const removableUserTexts = new Set([
   replyLabels.MENU,
   replyLabels.ADD_EXPENSE,
@@ -39,6 +37,21 @@ function getChatKey(ctx) {
 
 function hasInlineKeyboard(extra) {
   return Array.isArray(extra?.reply_markup?.inline_keyboard);
+}
+
+function hasReplyMarkup(extra) {
+  return Boolean(extra?.reply_markup);
+}
+
+function withMainMenuReplyKeyboard(ctx, extra) {
+  if (ctx.chat?.type !== 'private' || hasReplyMarkup(extra)) {
+    return extra;
+  }
+
+  return {
+    ...(extra || {}),
+    ...mainMenuReplyKeyboard(),
+  };
 }
 
 async function hideLastInlineKeyboard(ctx) {
@@ -114,19 +127,8 @@ async function ensureChatMenuButton(ctx) {
     return;
   }
 
-  const chatKey = getChatKey(ctx);
-  const lastConfiguredAt = chatMenuButtonConfiguredAt.get(chatKey) || 0;
-  const now = Date.now();
-
-  if (now - lastConfiguredAt < CHAT_MENU_BUTTON_REFRESH_MS) {
-    return;
-  }
-
-  chatMenuButtonConfiguredAt.set(chatKey, now);
-
   await configureChatMenuButton(ctx.telegram, ctx.chat.id).catch((error) => {
     console.error(`[bot:commands] failed to configure menu button for chat=${ctx.chat.id}`, error);
-    chatMenuButtonConfiguredAt.delete(chatKey);
   });
 }
 
@@ -153,8 +155,8 @@ function registerBot(bot) {
     const originalReply = ctx.reply.bind(ctx);
 
     ctx.reply = async (...args) => {
-      const message = await originalReply(...args);
-      const extra = args[1];
+      const extra = withMainMenuReplyKeyboard(ctx, args[1]);
+      const message = await originalReply(args[0], extra, ...args.slice(2));
       const chatKey = getChatKey(ctx);
 
       if (chatKey && hasInlineKeyboard(extra) && message?.message_id) {
