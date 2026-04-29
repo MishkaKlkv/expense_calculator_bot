@@ -25,10 +25,11 @@ function getZonedParts(date = new Date(), timezone = WEEKLY_REPORT_TIMEZONE) {
   const parts = Object.fromEntries(
     formatter.formatToParts(date).map((part) => [part.type, part.value])
   );
+  const hour = parts.hour === '24' ? '00' : parts.hour;
 
   return {
     day: Number(parts.day),
-    hour: Number(parts.hour),
+    hour: Number(hour),
     minute: Number(parts.minute),
     month: Number(parts.month),
     year: Number(parts.year),
@@ -236,17 +237,30 @@ async function getUsersForDueWeeklyReport(date = new Date()) {
   }
 
   const users = await findAllTelegramUsers();
+  const previousWeekStartKey = shiftDateKey(dueInfo.weekKey, -7);
   const usersWithState = await Promise.all(
-    users.map(async (user) => ({
-      delivery: await findWeeklyReportDelivery(user.id),
-      user,
-    }))
+    users.map(async (user) => {
+      const [delivery, trackedDays] = await Promise.all([
+        findWeeklyReportDelivery(user.id),
+        getTrackedDaysForRange({
+          userId: user.id,
+          startDateKey: previousWeekStartKey,
+          endDateKey: dueInfo.weekKey,
+        }),
+      ]);
+
+      return {
+        delivery,
+        isActive: trackedDays.length > 0,
+        user,
+      };
+    })
   );
 
   return {
     dueInfo,
     users: usersWithState
-      .filter(({ delivery }) => delivery?.lastSentWeek !== dueInfo.weekKey)
+      .filter(({ delivery, isActive }) => isActive && delivery?.lastSentWeek !== dueInfo.weekKey)
       .map(({ user }) => user),
   };
 }

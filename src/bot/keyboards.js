@@ -36,6 +36,7 @@ const actions = {
 };
 
 const replyLabels = {
+  MENU: 'Меню',
   ADD_EXPENSE: 'Добавить расход',
   ADD_INCOME: 'Добавить доход',
   STATS_MONTH: 'Статистика',
@@ -83,7 +84,7 @@ function mainMenuReplyKeyboard() {
     [replyLabels.ADD_EXPENSE, replyLabels.ADD_INCOME],
     [replyLabels.STATS_MONTH, replyLabels.RECENT_EXPENSES],
     [replyLabels.EDIT_EXPENSE, replyLabels.DELETE_EXPENSE],
-    [replyLabels.FAMILY_INFO],
+    [replyLabels.FAMILY_INFO, replyLabels.MENU],
     [replyLabels.HELP],
   ]).resize();
 }

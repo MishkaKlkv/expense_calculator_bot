@@ -130,12 +130,13 @@ function getMoscowParts(date = new Date()) {
   const parts = Object.fromEntries(
     formatter.formatToParts(date).map((part) => [part.type, part.value])
   );
+  const hour = parts.hour === '24' ? '00' : parts.hour;
 
   return {
     day: Number(parts.day),
     daysInMonth: new Date(Number(parts.year), Number(parts.month), 0).getDate(),
     monthKey: `${parts.year}-${parts.month}`,
-    time: `${parts.hour}:${parts.minute}`,
+    time: `${hour}:${parts.minute}`,
   };
 }
 

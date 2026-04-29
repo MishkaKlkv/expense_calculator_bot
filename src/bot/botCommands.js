@@ -21,7 +21,12 @@ const botCommands = [
 
 async function configureBotCommands(bot) {
   await bot.telegram.setMyCommands(botCommands);
-  await bot.telegram.setChatMenuButton({
+  await configureChatMenuButton(bot.telegram);
+}
+
+async function configureChatMenuButton(telegram, chatId) {
+  await telegram.setChatMenuButton({
+    ...(chatId ? { chatId } : {}),
     menuButton: {
       type: 'commands',
     },
@@ -30,5 +35,6 @@ async function configureBotCommands(bot) {
 
 module.exports = {
   botCommands,
+  configureChatMenuButton,
   configureBotCommands,
 };

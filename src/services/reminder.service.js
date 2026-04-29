@@ -36,10 +36,11 @@ function getZonedDateParts(date = new Date(), timezone = DEFAULT_TIMEZONE) {
   const parts = Object.fromEntries(
     formatter.formatToParts(date).map((part) => [part.type, part.value])
   );
+  const hour = parts.hour === '24' ? '00' : parts.hour;
 
   return {
     date: `${parts.year}-${parts.month}-${parts.day}`,
-    time: `${parts.hour}:${parts.minute}`,
+    time: `${hour}:${parts.minute}`,
   };
 }
 

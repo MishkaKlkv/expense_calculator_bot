@@ -93,6 +93,11 @@ function registerMenuHandlers(bot) {
     await showMainMenu(ctx);
   });
 
+  bot.hears(replyLabels.MENU, async (ctx) => {
+    await upsertTelegramUser(ctx.from);
+    await showMainMenu(ctx);
+  });
+
   bot.command('cancel', async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
 

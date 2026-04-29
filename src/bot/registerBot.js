@@ -13,12 +13,16 @@ const { registerStatsHandlers } = require('./handlers/stats.handler');
 const { registerAdminHandlers } = require('./handlers/admin.handler');
 const { registerAccountHandlers } = require('./handlers/account.handler');
 const { registerCategoryHandlers } = require('./handlers/category.handler');
+const { configureChatMenuButton } = require('./botCommands');
 const { logBotEventFromContext } = require('../services/botEvent.service');
 const { replyLabels } = require('./keyboards');
 
 const lastInlineKeyboardByChat = new Map();
 const temporaryMessagesByChat = new Map();
+const chatMenuButtonConfiguredAt = new Map();
+const CHAT_MENU_BUTTON_REFRESH_MS = 6 * 60 * 60 * 1000;
 const removableUserTexts = new Set([
+  replyLabels.MENU,
   replyLabels.ADD_EXPENSE,
   replyLabels.ADD_INCOME,
   replyLabels.STATS_MONTH,
@@ -105,6 +109,27 @@ async function deleteRemovableUserMessage(ctx) {
   await ctx.deleteMessage().catch(() => {});
 }
 
+async function ensureChatMenuButton(ctx) {
+  if (!ctx.chat?.id || ctx.chat.type !== 'private') {
+    return;
+  }
+
+  const chatKey = getChatKey(ctx);
+  const lastConfiguredAt = chatMenuButtonConfiguredAt.get(chatKey) || 0;
+  const now = Date.now();
+
+  if (now - lastConfiguredAt < CHAT_MENU_BUTTON_REFRESH_MS) {
+    return;
+  }
+
+  chatMenuButtonConfiguredAt.set(chatKey, now);
+
+  await configureChatMenuButton(ctx.telegram, ctx.chat.id).catch((error) => {
+    console.error(`[bot:commands] failed to configure menu button for chat=${ctx.chat.id}`, error);
+    chatMenuButtonConfiguredAt.delete(chatKey);
+  });
+}
+
 function registerBot(bot) {
   bot.use(async (ctx, next) => {
     const updateType = ctx.updateType;
@@ -118,6 +143,8 @@ function registerBot(bot) {
     } catch (error) {
       console.error('[bot:event] failed', error);
     }
+
+    await ensureChatMenuButton(ctx);
 
     return next();
   });
