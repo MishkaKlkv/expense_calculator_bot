@@ -4,6 +4,7 @@ const {
   clearAllExpenses,
   clearCurrentMonthExpenses,
 } = require('../../services/clearExpenses.service');
+const { resetDialogState } = require('../../services/dialogState.service');
 const { showMainMenu } = require('./menu.handler');
 
 function getClearPrompt(scope) {
@@ -23,6 +24,9 @@ function getClearPrompt(scope) {
 }
 
 async function askClearConfirmation(ctx, scope) {
+  const user = await upsertTelegramUser(ctx.from);
+
+  await resetDialogState(user.id);
   await ctx.reply(getClearPrompt(scope), clearExpensesConfirmKeyboard(scope));
 }
 
@@ -49,6 +53,7 @@ function registerClearExpensesHandlers(bot) {
         : await clearCurrentMonthExpenses(user.id);
 
     await ctx.answerCbQuery();
+    await resetDialogState(user.id);
     await showMainMenu(ctx, `Готово. Удалено расходов: ${result.count}.`);
   });
 }

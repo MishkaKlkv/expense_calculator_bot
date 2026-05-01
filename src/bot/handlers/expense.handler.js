@@ -39,7 +39,10 @@ async function handleIncomeInput(ctx, inputText, user, dialogState) {
 
   if (dialogState.state === 'ADD_INCOME_WAITING_FOR_CATEGORY') {
     const categories = await getUserCategoryNames({ userId: user.id, type: 'INCOME' });
-    await ctx.replyTemporary('Сначала выберите категорию кнопкой:', incomeCategoryKeyboard(categories));
+    await ctx.replyTemporary(
+      'Я жду выбор категории дохода. Выберите категорию кнопкой или отмените: /cancel',
+      incomeCategoryKeyboard(categories)
+    );
     return;
   }
 
@@ -57,7 +60,9 @@ async function handleIncomeInput(ctx, inputText, user, dialogState) {
   });
 
   if (!result.ok) {
-    await ctx.reply('Не получилось распознать доход. Пример: зарплата 150000 или project 500 usd');
+    await ctx.reply(
+      `Я жду сумму дохода для категории ${category}. Напишите так: зарплата 150000 или project 500 usd. Отмена: /cancel`
+    );
     return;
   }
 
@@ -93,7 +98,10 @@ async function handleExpenseInput(ctx, inputText) {
 
   if (dialogState.state === 'ADD_EXPENSE_WAITING_FOR_CATEGORY') {
     const categories = await getUserCategoryNames({ userId: user.id, type: 'EXPENSE' });
-    await ctx.replyTemporary('Сначала выберите категорию кнопкой:', categoryKeyboard(categories));
+    await ctx.replyTemporary(
+      'Я жду выбор категории расхода. Выберите категорию кнопкой или отмените: /cancel',
+      categoryKeyboard(categories)
+    );
     return;
   }
 
@@ -118,7 +126,7 @@ async function handleExpenseInput(ctx, inputText) {
 
     if (!result.ok) {
       await ctx.reply(
-        'Не получилось распознать расход. Пример: продукты перекресток 580 или такси 1200'
+        'Не получилось распознать расход. Напишите так: продукты перекресток 580 или такси 1200. Отмена: /cancel'
       );
       return;
     }
@@ -180,7 +188,9 @@ async function handleExpenseInput(ctx, inputText) {
   });
 
   if (!result.ok) {
-    await ctx.reply('Не получилось распознать расход. Пример: овощи 500 или coffee 10 usd');
+    await ctx.reply(
+      `Я жду сумму расхода для категории ${category}. Напишите так: овощи 500 или coffee 10 usd. Отмена: /cancel`
+    );
     return;
   }
 
@@ -208,7 +218,7 @@ function registerExpenseHandlers(bot) {
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_DETAILS', { category });
     await ctx.replyTemporary(
-      `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd`
+      `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd\nОтмена: /cancel`
     );
   });
 
@@ -219,7 +229,7 @@ function registerExpenseHandlers(bot) {
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
     await ctx.replyTemporary(
-      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd`
+      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd\nОтмена: /cancel`
     );
   });
 
@@ -238,19 +248,22 @@ function registerExpenseHandlers(bot) {
 
   bot.on('voice', async (ctx) => {
     try {
+      if (!process.env.OPENAI_API_KEY) {
+        await ctx.reply('Голосовой ввод сейчас отключен. Отправьте операцию текстом.');
+        return;
+      }
+
       await ctx.reply('Распознаю голосовое...');
 
       const transcription = await transcribeTelegramVoice(ctx, ctx.message.voice.file_id);
 
       if (!transcription.ok && transcription.reason === 'OPENAI_API_KEY_MISSING') {
-        await ctx.reply('Голосовой ввод пока не настроен: добавьте OPENAI_API_KEY в .env.');
+        await ctx.reply('Голосовой ввод сейчас отключен. Отправьте операцию текстом.');
         return;
       }
 
       if (!transcription.ok && transcription.reason === 'OPENAI_INSUFFICIENT_QUOTA') {
-        await ctx.reply(
-          'Голосовой ввод не сработал: у OpenAI API-ключа закончилась квота или не настроен API billing. ChatGPT Pro/Codex Cloud лимиты тут не используются.'
-        );
+        await ctx.reply('Голосовой ввод сейчас отключен. Отправьте операцию текстом.');
         return;
       }
 

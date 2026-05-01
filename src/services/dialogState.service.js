@@ -1,7 +1,17 @@
 const { prisma } = require('../db/prisma');
 
+const ACTIVE_STATE_TTL_MS = 30 * 60 * 1000;
+
+function isExpired(state) {
+  if (!state || state.state === 'IDLE') {
+    return false;
+  }
+
+  return Date.now() - state.updatedAt.getTime() > ACTIVE_STATE_TTL_MS;
+}
+
 async function getDialogState(userId) {
-  return prisma.dialogState.upsert({
+  const state = await prisma.dialogState.upsert({
     where: {
       userId,
     },
@@ -11,6 +21,12 @@ async function getDialogState(userId) {
     },
     update: {},
   });
+
+  if (!isExpired(state)) {
+    return state;
+  }
+
+  return resetDialogState(userId);
 }
 
 async function setDialogState(userId, state, payload = null) {

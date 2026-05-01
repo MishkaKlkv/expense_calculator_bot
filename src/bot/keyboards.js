@@ -14,6 +14,7 @@ const actions = {
   CLEAR_MONTH_EXPENSES: 'CLEAR_MONTH_EXPENSES',
   CLEAR_ALL_EXPENSES: 'CLEAR_ALL_EXPENSES',
   CHANGE_EXPENSE_CATEGORY: 'CHANGE_EXPENSE_CATEGORY',
+  CHANGE_INCOME_CATEGORY: 'CHANGE_INCOME_CATEGORY',
   ACCOUNT_ADD_HELP: 'ACCOUNT_ADD_HELP',
   ACCOUNT_SET_HELP: 'ACCOUNT_SET_HELP',
   ACCOUNT_DELETE_HELP: 'ACCOUNT_DELETE_HELP',
@@ -72,10 +73,6 @@ function mainMenuKeyboard() {
       Markup.button.callback('Семейный счет', actions.FAMILY_INFO),
       Markup.button.callback('Семейная статистика', actions.FAMILY_STATS),
     ],
-    [
-      Markup.button.callback('Очистить расходы месяца', actions.CLEAR_MONTH_EXPENSES),
-      Markup.button.callback('Очистить все расходы', actions.CLEAR_ALL_EXPENSES),
-    ],
   ]);
 }
 
@@ -99,6 +96,10 @@ function deleteExpenseListKeyboard(expenses) {
     ];
   });
 
+  rows.push([
+    Markup.button.callback('Очистить расходы месяца', actions.CLEAR_MONTH_EXPENSES),
+  ]);
+  rows.push([Markup.button.callback('Очистить все расходы', actions.CLEAR_ALL_EXPENSES)]);
   rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
 
   return Markup.inlineKeyboard(rows);
@@ -163,6 +164,7 @@ function afterExpenseKeyboard(category) {
 function afterIncomeKeyboard(category) {
   return Markup.inlineKeyboard([
     [Markup.button.callback(`Добавить еще в ${category}`, `${actions.ADD_INCOME}:${category}`)],
+    [Markup.button.callback('Другая категория', actions.CHANGE_INCOME_CATEGORY)],
     [Markup.button.callback('Главное меню', 'SHOW_MENU')],
   ]);
 }
@@ -191,6 +193,64 @@ function incomeCategoryKeyboard(categories) {
   for (let index = 0; index < buttons.length; index += 2) {
     rows.push(buttons.slice(index, index + 2));
   }
+
+  rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
+
+  return Markup.inlineKeyboard(rows);
+}
+
+function categoryNamesKeyboard(categories, actionPrefix) {
+  const buttons = categories.map((category) =>
+    Markup.button.callback(category, `${actionPrefix}:${category}`)
+  );
+  const rows = [];
+
+  for (let index = 0; index < buttons.length; index += 2) {
+    rows.push(buttons.slice(index, index + 2));
+  }
+
+  rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
+
+  return Markup.inlineKeyboard(rows);
+}
+
+function categoryTypeKeyboard(actionPrefix) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('Расходы', `${actionPrefix}:EXPENSE`),
+      Markup.button.callback('Доходы', `${actionPrefix}:INCOME`),
+    ],
+    [Markup.button.callback('Отмена', actions.CANCEL)],
+  ]);
+}
+
+function accountKindKeyboard() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('Доступные деньги', 'ACCOUNT_KIND:AVAILABLE'),
+      Markup.button.callback('Накопления', 'ACCOUNT_KIND:SAVINGS'),
+    ],
+    [Markup.button.callback('Отмена', actions.CANCEL)],
+  ]);
+}
+
+function accountListKeyboard(accounts, actionPrefix) {
+  const rows = accounts.map((account) => [
+    Markup.button.callback(account.name, `${actionPrefix}:${account.id}`),
+  ]);
+
+  rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
+
+  return Markup.inlineKeyboard(rows);
+}
+
+function plannedPaymentListKeyboard(payments, actionPrefix) {
+  const rows = payments.map((payment) => [
+    Markup.button.callback(
+      `${payment.dayOfMonth} число - ${payment.description}`,
+      `${actionPrefix}:${payment.id}`
+    ),
+  ]);
 
   rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
 
@@ -273,10 +333,14 @@ function reminderManageKeyboard(options = {}) {
 module.exports = {
   actions,
   accountsManageKeyboard,
+  accountKindKeyboard,
+  accountListKeyboard,
   afterExpenseKeyboard,
   afterIncomeKeyboard,
   categoriesManageKeyboard,
+  categoryTypeKeyboard,
   categoryKeyboard,
+  categoryNamesKeyboard,
   clearExpensesConfirmKeyboard,
   deleteExpenseConfirmKeyboard,
   deleteExpenseListKeyboard,
@@ -286,6 +350,7 @@ module.exports = {
   incomeCategoryKeyboard,
   mainMenuKeyboard,
   mainMenuReplyKeyboard,
+  plannedPaymentListKeyboard,
   plannedPaymentsManageKeyboard,
   reminderManageKeyboard,
   replyLabels,

@@ -45,9 +45,9 @@ async function showEditExpenseList(ctx) {
 function getFieldPrompt(field, type = 'EXPENSE') {
   const categoryExample = type === 'INCOME' ? 'Зарплата' : 'Дети';
   const prompts = {
-    category: `Отправьте новую категорию текстом, например: ${categoryExample}`,
-    description: 'Отправьте новое описание.',
-    amount: 'Отправьте новую сумму, например: 580 или 10 usd',
+    category: `Отправьте новую категорию текстом, например: ${categoryExample}\nОтмена: /cancel`,
+    description: 'Отправьте новое описание.\nОтмена: /cancel',
+    amount: 'Отправьте новую сумму, например: 580 или 10 usd\nОтмена: /cancel',
   };
 
   return prompts[field] || 'Отправьте новое значение.';

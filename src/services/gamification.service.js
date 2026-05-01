@@ -22,6 +22,8 @@ const BONUS_XP = {
   MONTH_25: 50,
 };
 
+const LEVEL_BASE_XP = 30;
+
 const achievementMeta = {
   FIRST_TRANSACTION: { title: 'Первый шаг', description: 'первая сохраненная операция' },
   FIRST_NO_EXPENSE_DAY: { title: 'Честный ноль', description: 'день без расходов отмечен честно' },
@@ -86,7 +88,7 @@ function getLevelThreshold(level) {
   let total = 0;
 
   for (let nextLevel = 2; nextLevel <= level; nextLevel += 1) {
-    total += Math.round((50 * Math.pow(1.18, nextLevel - 2)) / 10) * 10;
+    total += Math.round((LEVEL_BASE_XP * Math.pow(1.18, nextLevel - 2)) / 10) * 10;
   }
 
   return total;

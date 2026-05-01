@@ -182,7 +182,9 @@ async function aggregateTransactionsByCategory({ userId, userIds, start, end, ty
       cashback: true,
     },
     orderBy: {
-      category: 'asc',
+      _sum: {
+        amount: 'desc',
+      },
     },
   });
 }

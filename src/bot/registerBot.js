@@ -15,6 +15,8 @@ const { registerAccountHandlers } = require('./handlers/account.handler');
 const { registerCategoryHandlers } = require('./handlers/category.handler');
 const { configureChatMenuButton } = require('./botCommands');
 const { logBotEventFromContext } = require('../services/botEvent.service');
+const { resetDialogState } = require('../services/dialogState.service');
+const { upsertTelegramUser } = require('../repositories/user.repository');
 const { mainMenuReplyKeyboard, replyLabels } = require('./keyboards');
 
 const lastInlineKeyboardByChat = new Map();
@@ -122,6 +124,25 @@ async function deleteRemovableUserMessage(ctx) {
   await ctx.deleteMessage().catch(() => {});
 }
 
+function shouldResetDialogState(ctx) {
+  const text = ctx.message?.text;
+
+  if (!text) {
+    return false;
+  }
+
+  return text.startsWith('/') || removableUserTexts.has(text);
+}
+
+async function resetDialogStateForNavigation(ctx) {
+  if (!ctx.from || !shouldResetDialogState(ctx)) {
+    return;
+  }
+
+  const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
+}
+
 async function ensureChatMenuButton(ctx) {
   if (!ctx.chat?.id || ctx.chat.type !== 'private') {
     return;
@@ -194,6 +215,7 @@ function registerBot(bot) {
     } else if (ctx.message) {
       await hideLastInlineKeyboard(ctx);
       await deleteRemovableUserMessage(ctx);
+      await resetDialogStateForNavigation(ctx);
     }
 
     return next();

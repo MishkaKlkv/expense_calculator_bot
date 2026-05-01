@@ -11,8 +11,7 @@ const { getUserCategoryNames } = require('../../services/category.service');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 
 async function showMainMenu(ctx, message = 'Выберите действие:') {
-  await ctx.reply(message, mainMenuReplyKeyboard());
-  return ctx.replyTemporary('Быстрые кнопки:', mainMenuKeyboard());
+  return ctx.reply(message, mainMenuReplyKeyboard());
 }
 
 function getWelcomeText() {
@@ -66,6 +65,7 @@ function getHelpText() {
     '/profile - прогресс учета',
     '/done - отметить день без расходов',
     '/menu - главное меню',
+    '/cancel - отменить текущее действие',
     '',
     'Формат расхода:',
     'перекресток 580',
@@ -162,6 +162,15 @@ function registerMenuHandlers(bot) {
     await ctx.replyTemporary('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
   });
 
+  bot.action(actions.CHANGE_INCOME_CATEGORY, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const categories = await getUserCategoryNames({ userId: user.id, type: 'INCOME' });
+
+    await ctx.answerCbQuery();
+    await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_CATEGORY');
+    await ctx.replyTemporary('Выберите категорию дохода:', incomeCategoryKeyboard(categories));
+  });
+
   bot.action(/^REPEAT_CATEGORY:(.+)$/u, async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
     const category = ctx.match[1];
@@ -169,7 +178,7 @@ function registerMenuHandlers(bot) {
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_DETAILS', { category });
     await ctx.replyTemporary(
-      `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd`
+      `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd\nОтмена: /cancel`
     );
   });
 
@@ -180,7 +189,7 @@ function registerMenuHandlers(bot) {
     await ctx.answerCbQuery();
     await setDialogState(user.id, 'ADD_INCOME_WAITING_FOR_DETAILS', { category });
     await ctx.replyTemporary(
-      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd`
+      `Категория: ${category}\nОтправьте доход в формате: зарплата 150000, кешбек 250 или project 500 usd\nОтмена: /cancel`
     );
   });
 

@@ -7,6 +7,7 @@ const {
 } = require('../../services/stats.service');
 const { buildWeeklyReport } = require('../../services/weeklyReport.service');
 const { getAccounts, summarizeAccounts } = require('../../services/account.service');
+const { resetDialogState } = require('../../services/dialogState.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { formatMoney } = require('../../utils/money');
 
@@ -207,6 +208,7 @@ async function formatBalance({ expenses, incomes }, accounts = []) {
 
 async function sendMonthStats(ctx) {
   const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
   const stats = await getCurrentMonthBalance(user.id);
 
   await ctx.reply(formatStats(stats));
@@ -214,6 +216,7 @@ async function sendMonthStats(ctx) {
 
 async function sendPreviousMonthStats(ctx) {
   const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
   const stats = await getPreviousMonthBalance(user.id);
 
   await ctx.reply(formatStats(stats, 'Статистика за прошлый месяц'));
@@ -221,6 +224,7 @@ async function sendPreviousMonthStats(ctx) {
 
 async function sendMonthBalance(ctx) {
   const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
   const [balance, accounts] = await Promise.all([
     getCurrentMonthBalance(user.id),
     getAccounts(user.id),
@@ -231,6 +235,7 @@ async function sendMonthBalance(ctx) {
 
 async function sendMonthIncomeStats(ctx) {
   const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
   const stats = await getCurrentMonthIncomeStats(user.id);
 
   await ctx.reply(formatIncomeStats(stats));
@@ -238,6 +243,7 @@ async function sendMonthIncomeStats(ctx) {
 
 async function sendWeeklyReport(ctx) {
   const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
 
   await ctx.reply(await buildWeeklyReport(user.id));
 }
