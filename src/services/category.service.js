@@ -66,7 +66,9 @@ async function getUserCategories({ userId, type }) {
 async function getUserCategoryNames({ userId, type }) {
   const categories = await getUserCategories({ userId, type });
 
-  return categories.map((category) => category.name);
+  return categories
+    .map((category) => category.name)
+    .sort((left, right) => left.localeCompare(right, 'ru'));
 }
 
 async function findUserCategoryName({ userId, type, name }) {

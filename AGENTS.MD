@@ -144,6 +144,23 @@ Do not run `docker compose down -v` unless the user explicitly accepts losing th
 
 ## Deployment Reminder
 
+If the user writes exactly `deploy`, treat it as a deployment command and do all of the following:
+
+1. Commit and push current git changes if there are any. Do not include intentionally local/untracked files unless the user explicitly asks to track them.
+2. Connect to the production server over SSH:
+
+```bash
+ssh root@45.150.188.212
+```
+
+3. Run the already configured server-side deploy command:
+
+```bash
+deploy-bot
+```
+
+The server-side `deploy-bot` command is expected to run `git pull` and then rebuild/restart the Docker stack.
+
 After pushing code to the server, rebuild the app container so new source files are included:
 
 ```bash
