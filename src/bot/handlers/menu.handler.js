@@ -9,44 +9,10 @@ const {
 const { resetDialogState, setDialogState } = require('../../services/dialogState.service');
 const { getUserCategoryNames } = require('../../services/category.service');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
+const { isAdminTelegramUser } = require('../../services/admin.service');
 
 async function showMainMenu(ctx, message = 'Выберите действие:') {
   return ctx.reply(message, mainMenuReplyKeyboard());
-}
-
-function getWelcomeText() {
-  return [
-    'Привет! Я помогу вести личный и семейный учет денег без сложных таблиц и ручных расчетов.',
-    '',
-    'Что я умею:',
-    '',
-    '• Быстро записывать расходы',
-    'Например: продукты перекресток 580 или такси 1200',
-    '',
-    '• Учитывать доходы',
-    'Зарплата, кешбек, подработка и другие поступления',
-    '',
-    '• Показывать статистику',
-    'Расходы, доходы, остаток за месяц, прошлый месяц и недельные отчеты',
-    '',
-    '• Следить за балансом',
-    'Можно разделить деньги на доступные и накопления: карта, вклад, инвестиции, черный день',
-    '',
-    '• Работать с плановыми платежами',
-    'Аренда, интернет, подписки и другие регулярные платежи с напоминаниями',
-    '',
-    '• Напоминать внести траты',
-    'Можно настроить ежедневное напоминание в удобное время',
-    '',
-    '• Вести семейный учет',
-    'Создайте семейный счет и смотрите общие расходы',
-    '',
-    '• Поддерживать привычку учета',
-    'Есть серии дней, уровни, XP и достижения. Если расходов сегодня не было, отметьте день командой /done',
-    '',
-    'Начать проще всего с кнопки «Добавить расход» или команды /add.',
-    'Главное меню всегда доступно через /menu.',
-  ].join('\n');
 }
 
 function getHelpText() {
@@ -77,16 +43,26 @@ function getHelpText() {
   ].join('\n');
 }
 
+function getWelcomeTestText() {
+  return [
+    'Привет! Я помогу вести учет денег без таблиц.',
+    '',
+    'Что умею:',
+    '- быстро добавлять расходы и доходы;',
+    '- показывать статистику, баланс и курсы;',
+    '- вести личные и семейные категории;',
+    '- учитывать счета, накопления и плановые платежи;',
+    '- напоминать внести траты;',
+    '- поддерживать привычку учета через XP, уровни и серии.',
+    '',
+    'Начните с кнопки «Добавить расход» или команды /add.',
+  ].join('\n');
+}
+
 function registerMenuHandlers(bot) {
   bot.start(async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-
-    await showMainMenu(
-      ctx,
-      user.isNewUser
-        ? getWelcomeText()
-        : 'Привет! Я помогу учитывать расходы и доходы по категориям. Начните с добавления операции.'
-    );
+    await upsertTelegramUser(ctx.from);
+    await showMainMenu(ctx);
   });
 
   bot.command('menu', async (ctx) => {
@@ -109,6 +85,17 @@ function registerMenuHandlers(bot) {
   bot.command('help', async (ctx) => {
     await upsertTelegramUser(ctx.from);
     await ctx.replyTemporary(getHelpText());
+  });
+
+  bot.command('welcome_test', async (ctx) => {
+    await upsertTelegramUser(ctx.from);
+
+    if (!isAdminTelegramUser(ctx)) {
+      await ctx.reply('Команда недоступна.');
+      return;
+    }
+
+    await ctx.reply(getWelcomeTestText());
   });
 
   bot.hears(replyLabels.HELP, async (ctx) => {
