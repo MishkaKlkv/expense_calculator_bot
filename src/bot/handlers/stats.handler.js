@@ -9,6 +9,7 @@ const { buildWeeklyReport } = require('../../services/weeklyReport.service');
 const { getAccounts, summarizeAccounts } = require('../../services/account.service');
 const { resetDialogState } = require('../../services/dialogState.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
+const { getMarketRatesSnapshot } = require('../../services/marketRates.service');
 const { formatMoney } = require('../../utils/money');
 
 function formatCategoryRows(rows, emptyText) {
@@ -151,6 +152,42 @@ function formatAccountsSummary(accounts) {
   ].join('\n');
 }
 
+function formatNumber(value, options = {}) {
+  return new Intl.NumberFormat('ru-RU', options).format(value);
+}
+
+function formatUsdMarketValue(rate) {
+  if (!rate?.ok) {
+    return 'не удалось получить';
+  }
+
+  const maximumFractionDigits = rate.value >= 1000 ? 0 : 2;
+
+  return `${formatNumber(rate.value, { maximumFractionDigits })} $`;
+}
+
+function formatRubMarketValue(rate) {
+  if (!rate?.ok) {
+    return 'не удалось получить';
+  }
+
+  return `${formatNumber(rate.value, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })} ₽`;
+}
+
+function formatExchangeRates(snapshot) {
+  return [
+    'Актуальные курсы:',
+    '',
+    `🥇 Золото ${formatUsdMarketValue(snapshot.gold)}.`,
+    `🛢️ Нефть ${formatUsdMarketValue(snapshot.oil)}.`,
+    `💵 Доллар ${formatRubMarketValue(snapshot.usd)}`,
+    `💵 Биткоин ${formatUsdMarketValue(snapshot.bitcoin)}`,
+  ].join('\n');
+}
+
 async function formatBalance({ expenses, incomes }, accounts = []) {
   if (expenses.length === 0 && incomes.length === 0) {
     return ['За текущий месяц операций пока нет.', '', formatAccountsSummary(accounts)].join('\n');
@@ -248,11 +285,20 @@ async function sendWeeklyReport(ctx) {
   await ctx.reply(await buildWeeklyReport(user.id));
 }
 
+async function sendExchangeRates(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
+  const snapshot = await getMarketRatesSnapshot();
+
+  await ctx.reply(formatExchangeRates(snapshot));
+}
+
 function registerStatsHandlers(bot) {
   bot.command('stats', sendMonthStats);
   bot.command('prev_month', sendPreviousMonthStats);
   bot.command('income', sendMonthIncomeStats);
   bot.command('balance', sendMonthBalance);
+  bot.command('exchange_rate', sendExchangeRates);
   bot.command('weekly_report', sendWeeklyReport);
   bot.hears(replyLabels.STATS_MONTH, sendMonthStats);
 

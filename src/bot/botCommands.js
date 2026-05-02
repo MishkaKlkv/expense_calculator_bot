@@ -6,6 +6,7 @@ const botCommands = [
   { command: 'add_income', description: 'Добавить доход' },
   { command: 'stats', description: 'Статистика за текущий месяц' },
   { command: 'balance', description: 'Баланс и деньги сейчас' },
+  { command: 'exchange_rate', description: 'Курсы валют и рынков' },
   { command: 'accounts', description: 'Счета и накопления' },
   { command: 'planned', description: 'Платежи и напоминания' },
   { command: 'reminder', description: 'Настроить напоминание' },
