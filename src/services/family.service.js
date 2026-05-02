@@ -6,6 +6,7 @@ const {
   joinFamily,
   updateFamilyName,
 } = require('../repositories/family.repository');
+const { syncFamilyCategoriesForUser } = require('./category.service');
 
 function normalizeInviteCode(value) {
   return value.trim().toUpperCase();
@@ -51,6 +52,8 @@ async function joinFamilyByCode({ user, inviteCode }) {
     familyAccountId: family.id,
     userId: user.id,
   });
+
+  await syncFamilyCategoriesForUser(user.id);
 
   return { ok: true, family: membership.familyAccount };
 }
