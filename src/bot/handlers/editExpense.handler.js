@@ -10,6 +10,7 @@ const {
   getExpenseForEdit,
   updateExpenseField,
 } = require('../../services/editExpense.service');
+const { deleteExpense } = require('../../services/deleteExpense.service');
 const {
   getDialogState,
   resetDialogState,
@@ -117,6 +118,42 @@ function registerEditExpenseHandlers(bot) {
       field,
     });
     await ctx.reply(getFieldPrompt(field, expense.type));
+  });
+
+  bot.action(/^QUICK_EDIT_FIELD:(.+):(amount|description)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const expenseId = ctx.match[1];
+    const field = ctx.match[2];
+
+    await ctx.answerCbQuery();
+    const expense = await getExpenseForEdit({ expenseId, userId: user.id });
+
+    if (!expense) {
+      await showMainMenu(ctx, 'Не нашел эту операцию или у вас нет прав ее редактировать.');
+      return;
+    }
+
+    await setDialogState(user.id, 'EDIT_TRANSACTION_WAITING_FOR_FIELD', {
+      expenseId,
+      field,
+    });
+    await ctx.reply(getFieldPrompt(field, expense.type));
+  });
+
+  bot.action(/^QUICK_DELETE:(.+)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const expenseId = ctx.match[1];
+    const result = await deleteExpense({ expenseId, userId: user.id });
+
+    await ctx.answerCbQuery();
+    await resetDialogState(user.id);
+
+    if (!result.ok) {
+      await showMainMenu(ctx, 'Не получилось удалить операцию: она уже удалена или недоступна.');
+      return;
+    }
+
+    await showMainMenu(ctx, 'Операция удалена.');
   });
 
   bot.on('text', async (ctx, next) => {

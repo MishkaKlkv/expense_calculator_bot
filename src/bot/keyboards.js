@@ -153,16 +153,32 @@ function editExpenseFieldKeyboard(expenseId) {
   ]);
 }
 
-function afterExpenseKeyboard(category) {
+function quickEditRows(transactionId) {
+  if (!transactionId) {
+    return [];
+  }
+
+  return [
+    [
+      Markup.button.callback('Изм. сумму', `QUICK_EDIT_FIELD:${transactionId}:amount`),
+      Markup.button.callback('Изм. описание', `QUICK_EDIT_FIELD:${transactionId}:description`),
+    ],
+    [Markup.button.callback('Удалить', `QUICK_DELETE:${transactionId}`)],
+  ];
+}
+
+function afterExpenseKeyboard(category, transactionId) {
   return Markup.inlineKeyboard([
+    ...quickEditRows(transactionId),
     [Markup.button.callback(`Добавить еще в ${category}`, `${actions.REPEAT_CATEGORY}:${category}`)],
     [Markup.button.callback('Другая категория', actions.CHANGE_EXPENSE_CATEGORY)],
     [Markup.button.callback('Главное меню', 'SHOW_MENU')],
   ]);
 }
 
-function afterIncomeKeyboard(category) {
+function afterIncomeKeyboard(category, transactionId) {
   return Markup.inlineKeyboard([
+    ...quickEditRows(transactionId),
     [Markup.button.callback(`Добавить еще в ${category}`, `${actions.ADD_INCOME}:${category}`)],
     [Markup.button.callback('Другая категория', actions.CHANGE_INCOME_CATEGORY)],
     [Markup.button.callback('Главное меню', 'SHOW_MENU')],

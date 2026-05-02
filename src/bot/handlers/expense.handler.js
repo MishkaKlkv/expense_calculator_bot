@@ -78,7 +78,7 @@ async function handleIncomeInput(ctx, inputText, user, dialogState) {
       saved.income.amount,
       saved.income.currency
     )}, ${saved.income.category}${progressText}`,
-    afterIncomeKeyboard(saved.income.category)
+    afterIncomeKeyboard(saved.income.category, saved.income.id)
   );
 }
 
@@ -143,7 +143,7 @@ async function handleExpenseInput(ctx, inputText) {
         saved.expense.amount,
         saved.expense.currency
       )}, ${saved.expense.category}${progressText}`,
-      afterExpenseKeyboard(saved.expense.category)
+      afterExpenseKeyboard(saved.expense.category, saved.expense.id)
     );
     return;
   }
@@ -169,7 +169,7 @@ async function handleExpenseInput(ctx, inputText) {
         result.expense.amount,
         result.expense.currency
       )}, ${result.expense.category}${progressText}`,
-      afterExpenseKeyboard(result.expense.category)
+      afterExpenseKeyboard(result.expense.category, result.expense.id)
     );
     return;
   }
@@ -206,7 +206,7 @@ async function handleExpenseInput(ctx, inputText) {
       saved.expense.amount,
       saved.expense.currency
     )}, ${saved.expense.category}${progressText}`,
-    afterExpenseKeyboard(saved.expense.category)
+    afterExpenseKeyboard(saved.expense.category, saved.expense.id)
   );
 }
 
