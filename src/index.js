@@ -7,11 +7,15 @@ const {
   startPlannedPaymentReminderScheduler,
 } = require('./services/plannedPaymentReminderScheduler.service');
 const { startReminderScheduler } = require('./services/reminderScheduler.service');
+const {
+  startReminderSuggestionScheduler,
+} = require('./services/reminderSuggestionScheduler.service');
 const { startWeeklyReportScheduler } = require('./services/weeklyReportScheduler.service');
 
 const bot = new Telegraf(env.botToken);
 let plannedPaymentReminderScheduler = null;
 let reminderScheduler = null;
+let reminderSuggestionScheduler = null;
 let weeklyReportScheduler = null;
 
 registerBot(bot);
@@ -24,6 +28,7 @@ async function shutdown(signal) {
   console.log(`Received ${signal}. Shutting down...`);
   plannedPaymentReminderScheduler?.stop();
   reminderScheduler?.stop();
+  reminderSuggestionScheduler?.stop();
   weeklyReportScheduler?.stop();
   bot.stop(signal);
   await prisma.$disconnect();
@@ -34,6 +39,7 @@ process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
 reminderScheduler = startReminderScheduler(bot);
+reminderSuggestionScheduler = startReminderSuggestionScheduler(bot);
 weeklyReportScheduler = startWeeklyReportScheduler(bot);
 plannedPaymentReminderScheduler = startPlannedPaymentReminderScheduler(bot);
 
@@ -50,6 +56,7 @@ bot.launch().then(async () => {
   console.error('Failed to launch bot:', error);
   plannedPaymentReminderScheduler?.stop();
   reminderScheduler?.stop();
+  reminderSuggestionScheduler?.stop();
   weeklyReportScheduler?.stop();
   await prisma.$disconnect();
   process.exit(1);

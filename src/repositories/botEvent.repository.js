@@ -60,9 +60,27 @@ async function getTopBotEvents({ since, limit = 10 } = {}) {
   });
 }
 
+async function findActiveTelegramUserIdsInRange({ start, end }) {
+  const rows = await prisma.botEvent.groupBy({
+    by: ['telegramUserId'],
+    where: {
+      telegramUserId: {
+        not: null,
+      },
+      createdAt: {
+        gte: start,
+        lt: end,
+      },
+    },
+  });
+
+  return rows.map((row) => row.telegramUserId);
+}
+
 module.exports = {
   countActiveEventUsers,
   countBotEvents,
   createBotEvent,
+  findActiveTelegramUserIdsInRange,
   getTopBotEvents,
 };
