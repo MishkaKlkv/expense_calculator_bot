@@ -16,7 +16,7 @@ function buildUserWhere({ userId, userIds }) {
   return userId;
 }
 
-async function findRecentExpenses({ userId, userIds, limit = 10 }) {
+async function findRecentExpenses({ userId, userIds, limit = 10, offset = 0 }) {
   return prisma.expense.findMany({
     where: {
       userId: buildUserWhere({ userId, userIds }),
@@ -25,9 +25,8 @@ async function findRecentExpenses({ userId, userIds, limit = 10 }) {
     include: {
       user: true,
     },
-    orderBy: {
-      expenseDate: 'desc',
-    },
+    orderBy: [{ expenseDate: 'desc' }, { id: 'desc' }],
+    skip: offset,
     take: limit,
   });
 }

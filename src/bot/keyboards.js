@@ -6,11 +6,13 @@ const actions = {
   STATS_MONTH: 'STATS_MONTH',
   STATS_PREVIOUS_MONTH: 'STATS_PREVIOUS_MONTH',
   RECENT_EXPENSES: 'RECENT_EXPENSES',
+  RECENT_EXPENSES_NEXT: 'RECENT_EXPENSES_NEXT',
   DELETE_EXPENSE: 'DELETE_EXPENSE',
   EDIT_EXPENSE: 'EDIT_EXPENSE',
   FAMILY_INFO: 'FAMILY_INFO',
   FAMILY_STATS: 'FAMILY_STATS',
   FAMILY_RECENT: 'FAMILY_RECENT',
+  FAMILY_RECENT_NEXT: 'FAMILY_RECENT_NEXT',
   CLEAR_MONTH_EXPENSES: 'CLEAR_MONTH_EXPENSES',
   CLEAR_ALL_EXPENSES: 'CLEAR_ALL_EXPENSES',
   CHANGE_EXPENSE_CATEGORY: 'CHANGE_EXPENSE_CATEGORY',
@@ -346,6 +348,15 @@ function reminderManageKeyboard(options = {}) {
   return Markup.inlineKeyboard(rows);
 }
 
+function recentExpensesKeyboard(nextOffset, options = {}) {
+  const { family = false } = options;
+  const action = family ? actions.FAMILY_RECENT_NEXT : actions.RECENT_EXPENSES_NEXT;
+
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('Следующие 10', `${action}:${nextOffset}`)],
+  ]);
+}
+
 module.exports = {
   actions,
   accountsManageKeyboard,
@@ -368,6 +379,7 @@ module.exports = {
   mainMenuReplyKeyboard,
   plannedPaymentListKeyboard,
   plannedPaymentsManageKeyboard,
+  recentExpensesKeyboard,
   reminderManageKeyboard,
   replyLabels,
 };

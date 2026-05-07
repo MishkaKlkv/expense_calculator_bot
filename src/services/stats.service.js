@@ -42,12 +42,12 @@ async function getCurrentMonthStatsForUsers(userIds) {
   return aggregateExpensesByCategory({ userIds, start, end });
 }
 
-async function getRecentExpenses(userId, limit = 10) {
-  return findRecentExpenses({ userId, limit });
+async function getRecentExpenses(userId, limit = 10, offset = 0) {
+  return findRecentExpenses({ userId, limit, offset });
 }
 
-async function getRecentExpensesForUsers(userIds, limit = 10) {
-  return findRecentExpenses({ userIds, limit });
+async function getRecentExpensesForUsers(userIds, limit = 10, offset = 0) {
+  return findRecentExpenses({ userIds, limit, offset });
 }
 
 module.exports = {

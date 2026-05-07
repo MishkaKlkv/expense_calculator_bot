@@ -1,4 +1,4 @@
-const { actions, familyOwnerKeyboard, replyLabels } = require('../keyboards');
+const { actions, familyOwnerKeyboard, recentExpensesKeyboard, replyLabels } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   createFamily,
@@ -17,6 +17,18 @@ const {
 } = require('../../services/gamification.service');
 const { formatDateTime } = require('../../utils/date');
 const { formatMoney } = require('../../utils/money');
+
+const FAMILY_RECENT_PAGE_SIZE = 10;
+
+function normalizeOffset(value) {
+  const offset = Number(value);
+
+  if (!Number.isInteger(offset) || offset < 0) {
+    return 0;
+  }
+
+  return offset;
+}
 
 function getDisplayName(user) {
   if (user.firstName) {
@@ -90,9 +102,9 @@ function formatStats(rows) {
   )}\n\nИтого:\n${totalLines.join('\n')}`;
 }
 
-function formatRecentExpenses(expenses) {
+function formatRecentExpenses(expenses, offset = 0) {
   if (expenses.length === 0) {
-    return 'Последних семейных трат пока нет.';
+    return offset > 0 ? 'Больше семейных трат пока нет.' : 'Последних семейных трат пока нет.';
   }
 
   const lines = expenses.map((expense) => {
@@ -129,7 +141,7 @@ async function sendFamilyStats(ctx) {
   await ctx.reply(formatStats(stats));
 }
 
-async function sendFamilyRecent(ctx) {
+async function sendFamilyRecent(ctx, offset = 0) {
   const user = await upsertTelegramUser(ctx.from);
   const context = await getFamilyContext(user.id);
 
@@ -138,8 +150,19 @@ async function sendFamilyRecent(ctx) {
     return;
   }
 
-  const expenses = await getRecentExpensesForUsers(context.memberUserIds);
-  await ctx.reply(formatRecentExpenses(expenses));
+  const requestedOffset = normalizeOffset(offset);
+  const expenses = await getRecentExpensesForUsers(
+    context.memberUserIds,
+    FAMILY_RECENT_PAGE_SIZE + 1,
+    requestedOffset
+  );
+  const hasNextPage = expenses.length > FAMILY_RECENT_PAGE_SIZE;
+  const pageExpenses = expenses.slice(0, FAMILY_RECENT_PAGE_SIZE);
+  const keyboard = hasNextPage
+    ? recentExpensesKeyboard(requestedOffset + FAMILY_RECENT_PAGE_SIZE, { family: true })
+    : undefined;
+
+  await ctx.reply(formatRecentExpenses(pageExpenses, requestedOffset), keyboard);
 }
 
 function registerFamilyHandlers(bot) {
@@ -238,6 +261,11 @@ function registerFamilyHandlers(bot) {
   bot.action(actions.FAMILY_RECENT, async (ctx) => {
     await ctx.answerCbQuery();
     await sendFamilyRecent(ctx);
+  });
+
+  bot.action(/^FAMILY_RECENT_NEXT:(\d+)$/u, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendFamilyRecent(ctx, ctx.match[1]);
   });
 
   bot.action(/^FAMILY_REMOVE:(.+)$/u, async (ctx) => {
