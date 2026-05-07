@@ -49,4 +49,12 @@ async function findAllTelegramUsers() {
   });
 }
 
-module.exports = { findAllTelegramUsers, upsertTelegramUser };
+async function deleteTelegramUserById(userId) {
+  return prisma.telegramUser.delete({
+    where: {
+      id: userId,
+    },
+  });
+}
+
+module.exports = { deleteTelegramUserById, findAllTelegramUsers, upsertTelegramUser };

@@ -16,6 +16,16 @@ const {
   getTodayRange,
 } = require('../utils/date');
 
+const CHART_FONT_FAMILY = 'DejaVu Sans, Arial, sans-serif';
+const EXPORT_COLUMNS = [
+  { header: 'Дата', key: 'date', width: 24 },
+  { header: 'Пользователь', key: 'user', width: 20 },
+  { header: 'Категория', key: 'category', width: 18 },
+  { header: 'Описание', key: 'description', width: 32 },
+  { header: 'Сумма', key: 'amount', width: 12 },
+  { header: 'Валюта', key: 'currency', width: 10 },
+];
+
 function getNetAmount(row) {
   return Number(row._sum.amount || 0);
 }
@@ -108,26 +118,19 @@ async function exportMonthExpenses({ userId, userIds, format = 'csv' }) {
 
   if (format === 'xlsx') {
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Expenses');
+    const sheet = workbook.addWorksheet('Расходы');
 
-    sheet.columns = [
-      { header: 'date', key: 'date', width: 24 },
-      { header: 'user', key: 'user', width: 20 },
-      { header: 'category', key: 'category', width: 18 },
-      { header: 'description', key: 'description', width: 32 },
-      { header: 'amount', key: 'amount', width: 12 },
-      { header: 'currency', key: 'currency', width: 10 },
-    ];
+    sheet.columns = EXPORT_COLUMNS;
     sheet.addRows(rows);
     await workbook.xlsx.writeFile(filePath);
   } else {
-    const headers = ['date', 'user', 'category', 'description', 'amount', 'currency'];
+    const keys = EXPORT_COLUMNS.map((column) => column.key);
     const csvRows = [
-      headers.join(','),
+      EXPORT_COLUMNS.map((column) => column.header).join(','),
       ...rows.map((row) =>
-        headers
-          .map((header) => {
-            const value = row[header] instanceof Date ? row[header].toISOString() : row[header];
+        keys
+          .map((key) => {
+            const value = row[key] instanceof Date ? row[key].toISOString() : row[key];
             return `"${String(value ?? '').replace(/"/g, '""')}"`;
           })
           .join(',')
@@ -217,7 +220,7 @@ function buildMonthChartSvgContent(rows) {
 
   if (chartRows.length === 0) {
     return [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
       '<rect width="100%" height="100%" fill="#ffffff" />',
       '<text x="60" y="82" font-size="36" font-weight="700" fill="#111">Расходы за месяц</text>',
       '<text x="60" y="140" font-size="24" fill="#555">Нет расходов в RUB за текущий месяц</text>',
@@ -261,7 +264,7 @@ function buildMonthChartSvgContent(rows) {
     .join('\n');
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
     '<rect width="100%" height="100%" fill="#ffffff" />',
     '<text x="60" y="82" font-size="36" font-weight="700" fill="#111">Расходы за месяц</text>',
     '<text x="60" y="122" font-size="21" fill="#555">По категориям, RUB</text>',

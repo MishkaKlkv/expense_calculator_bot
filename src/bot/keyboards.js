@@ -43,6 +43,7 @@ const actions = {
   REMINDER_RUN: 'REMINDER_RUN',
   REPEAT_CATEGORY: 'REPEAT_CATEGORY',
   DONE_NO_EXPENSE_CONFIRM: 'DONE_NO_EXPENSE_CONFIRM',
+  DELETE_ACCOUNT_CONFIRM: 'DELETE_ACCOUNT_CONFIRM',
   CANCEL: 'CANCEL',
 };
 
@@ -147,6 +148,21 @@ function doneNoExpenseConfirmKeyboard(dateKey) {
     ],
     [Markup.button.callback('Отмена', actions.CANCEL)],
   ]);
+}
+
+function deleteAccountConfirmKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('Удалить аккаунт', actions.DELETE_ACCOUNT_CONFIRM)],
+    [Markup.button.callback('Отмена', actions.CANCEL)],
+  ]);
+}
+
+function deleteAccountNumberKeyboard(target, options) {
+  return Markup.inlineKeyboard(
+    options.map((option) => [
+      Markup.button.callback(String(option), `DELETE_ACCOUNT_NUMBER:${target}:${option}`),
+    ])
+  );
 }
 
 function editExpenseListKeyboard(expenses) {
@@ -410,6 +426,8 @@ module.exports = {
   categoryKeyboard,
   categoryNamesKeyboard,
   clearExpensesConfirmKeyboard,
+  deleteAccountConfirmKeyboard,
+  deleteAccountNumberKeyboard,
   deleteExpenseConfirmKeyboard,
   deleteExpenseListKeyboard,
   doneNoExpenseConfirmKeyboard,

@@ -1,4 +1,5 @@
 const { createExpense } = require('../repositories/expense.repository');
+const { learnAutoCategoryFromExpense } = require('./autoCategory.service');
 const { parseExpenseMessage } = require('./parser.service');
 
 function buildPendingExpenseFromMessage({ category, messageText }) {
@@ -31,6 +32,15 @@ async function createExpenseFromPending({ user, pendingExpense }) {
     currency: pendingExpense.currency,
     expenseDate: new Date(),
   });
+
+  try {
+    await learnAutoCategoryFromExpense({
+      category: expense.category,
+      description: expense.description,
+    });
+  } catch (error) {
+    console.error('[auto-category] failed to learn from expense', error);
+  }
 
   return { ok: true, expense };
 }

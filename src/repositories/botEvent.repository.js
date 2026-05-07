@@ -77,10 +77,19 @@ async function findActiveTelegramUserIdsInRange({ start, end }) {
   return rows.map((row) => row.telegramUserId);
 }
 
+async function deleteBotEventsByTelegramUserId(telegramUserId) {
+  return prisma.botEvent.deleteMany({
+    where: {
+      telegramUserId,
+    },
+  });
+}
+
 module.exports = {
   countActiveEventUsers,
   countBotEvents,
   createBotEvent,
+  deleteBotEventsByTelegramUserId,
   findActiveTelegramUserIdsInRange,
   getTopBotEvents,
 };
