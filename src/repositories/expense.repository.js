@@ -65,6 +65,19 @@ async function findExpensesInRange({ userId, userIds, start, end }) {
   });
 }
 
+async function countExpensesInRange({ userId, start, end }) {
+  return prisma.expense.count({
+    where: {
+      userId,
+      type: 'EXPENSE',
+      expenseDate: {
+        gte: start,
+        lt: end,
+      },
+    },
+  });
+}
+
 async function findTopExpenses({ userId, userIds, start, end, limit = 5 }) {
   return prisma.expense.findMany({
     where: {
@@ -212,6 +225,7 @@ module.exports = {
   aggregateExpensesByCategory,
   aggregateTransactionsByCategory,
   aggregateExpensesByUser,
+  countExpensesInRange,
   createExpense,
   deleteExpenseByIdForUser,
   deleteExpensesForUser,

@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const ExcelJS = require('exceljs');
+const sharp = require('sharp');
 const {
   aggregateExpensesByCategory,
   aggregateExpensesByUser,
@@ -148,7 +149,132 @@ function escapeXml(value) {
     .replace(/"/g, '&quot;');
 }
 
-async function buildMonthChartSvg(userId) {
+function formatChartAmount(value) {
+  return `${new Intl.NumberFormat('ru-RU', {
+    maximumFractionDigits: 0,
+  }).format(Math.round(value))} ₽`;
+}
+
+function formatChartPercent(value) {
+  return `${new Intl.NumberFormat('ru-RU', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: value < 10 ? 1 : 0,
+  }).format(value)}%`;
+}
+
+function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
+
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY + radius * Math.sin(angleInRadians),
+  };
+}
+
+function describePieSlice({ centerX, centerY, radius, startAngle, endAngle }) {
+  const start = polarToCartesian(centerX, centerY, radius, endAngle);
+  const end = polarToCartesian(centerX, centerY, radius, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+
+  return [
+    `M ${centerX} ${centerY}`,
+    `L ${start.x.toFixed(2)} ${start.y.toFixed(2)}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`,
+    'Z',
+  ].join(' ');
+}
+
+function groupChartRows(rows) {
+  const visibleRows = rows.slice(0, 7);
+  const otherRows = rows.slice(7);
+  const otherValue = otherRows.reduce((sum, row) => sum + row.value, 0);
+
+  if (otherValue <= 0) {
+    return visibleRows;
+  }
+
+  return [...visibleRows, { category: 'Другое', value: otherValue }];
+}
+
+function buildMonthChartSvgContent(rows) {
+  const chartRows = groupChartRows(rows);
+  const total = chartRows.reduce((sum, row) => sum + row.value, 0);
+  const colors = [
+    '#2f80ed',
+    '#27ae60',
+    '#f2994a',
+    '#eb5757',
+    '#9b51e0',
+    '#00a6a6',
+    '#f2c94c',
+    '#6fcf97',
+  ];
+  const width = 1100;
+  const height = 720;
+  const centerX = 330;
+  const centerY = 380;
+  const radius = 230;
+
+  if (chartRows.length === 0) {
+    return [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+      '<rect width="100%" height="100%" fill="#ffffff" />',
+      '<text x="60" y="82" font-size="36" font-weight="700" fill="#111">Расходы за месяц</text>',
+      '<text x="60" y="140" font-size="24" fill="#555">Нет расходов в RUB за текущий месяц</text>',
+      '</svg>',
+    ].join('\n');
+  }
+
+  let currentAngle = 0;
+  const slices = chartRows
+    .map((row, index) => {
+      const sliceAngle = (row.value / total) * 360;
+      const startAngle = currentAngle;
+      const endAngle = index === chartRows.length - 1 ? 360 : currentAngle + sliceAngle;
+      currentAngle = endAngle;
+
+      if (chartRows.length === 1) {
+        return `<circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="${colors[index]}" />`;
+      }
+
+      return `<path d="${describePieSlice({
+        centerX,
+        centerY,
+        endAngle,
+        radius,
+        startAngle,
+      })}" fill="${colors[index]}" stroke="#ffffff" stroke-width="4" />`;
+    })
+    .join('\n');
+
+  const legend = chartRows
+    .map((row, index) => {
+      const y = 190 + index * 58;
+      const percent = (row.value / total) * 100;
+
+      return [
+        `<rect x="650" y="${y - 22}" width="28" height="28" rx="6" fill="${colors[index]}" />`,
+        `<text x="696" y="${y}" font-size="24" font-weight="700" fill="#111">${escapeXml(row.category)}</text>`,
+        `<text x="696" y="${y + 30}" font-size="20" fill="#555">${escapeXml(formatChartAmount(row.value))} · ${formatChartPercent(percent)}</text>`,
+      ].join('\n');
+    })
+    .join('\n');
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    '<rect width="100%" height="100%" fill="#ffffff" />',
+    '<text x="60" y="82" font-size="36" font-weight="700" fill="#111">Расходы за месяц</text>',
+    '<text x="60" y="122" font-size="21" fill="#555">По категориям, RUB</text>',
+    slices,
+    `<circle cx="${centerX}" cy="${centerY}" r="96" fill="#ffffff" />`,
+    `<text x="${centerX}" y="${centerY - 8}" font-size="24" text-anchor="middle" fill="#555">Итого</text>`,
+    `<text x="${centerX}" y="${centerY + 34}" font-size="30" font-weight="700" text-anchor="middle" fill="#111">${escapeXml(formatChartAmount(total))}</text>`,
+    legend,
+    '</svg>',
+  ].join('\n');
+}
+
+async function buildMonthChartPng(userId) {
   const rows = await getCategoryStatsForRange({
     userId,
     range: getCurrentMonthRange(),
@@ -160,43 +286,18 @@ async function buildMonthChartSvg(userId) {
       value: getNetAmount(row),
     }))
     .filter((row) => row.value > 0)
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8);
-
-  const max = Math.max(...rubRows.map((row) => row.value), 1);
-  const width = 900;
-  const rowHeight = 56;
-  const height = 120 + rubRows.length * rowHeight;
-  const bars = rubRows
-    .map((row, index) => {
-      const y = 80 + index * rowHeight;
-      const barWidth = Math.round((row.value / max) * 560);
-
-      return [
-        `<text x="40" y="${y + 24}" font-size="22" fill="#222">${escapeXml(row.category)}</text>`,
-        `<rect x="230" y="${y}" width="${barWidth}" height="32" fill="#2f80ed" rx="6" />`,
-        `<text x="${240 + barWidth}" y="${y + 24}" font-size="20" fill="#222">${Math.round(row.value)} RUB</text>`,
-      ].join('\n');
-    })
-    .join('\n');
-
-  const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-    '<rect width="100%" height="100%" fill="#ffffff" />',
-    '<text x="40" y="44" font-size="28" font-weight="700" fill="#111">Расходы за месяц по категориям</text>',
-    bars || '<text x="40" y="92" font-size="22" fill="#555">Нет расходов в RUB за текущий месяц</text>',
-    '</svg>',
-  ].join('\n');
+    .sort((a, b) => b.value - a.value);
+  const svg = buildMonthChartSvgContent(rubRows);
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'expense-chart-'));
-  const filePath = path.join(tempDir, `chart-${Date.now()}.svg`);
+  const filePath = path.join(tempDir, `chart-${Date.now()}.png`);
 
-  await fs.promises.writeFile(filePath, svg);
+  await sharp(Buffer.from(svg)).png().toFile(filePath);
 
   return { filePath, tempDir };
 }
 
 module.exports = {
-  buildMonthChartSvg,
+  buildMonthChartPng,
   exportMonthExpenses,
   getFamilySpendingByUser,
   getMonthComparison,

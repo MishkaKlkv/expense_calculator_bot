@@ -78,6 +78,7 @@ model TelegramUser {
   dailyReminder            DailyReminder?
   weeklyReport             WeeklyReportDelivery?
   reminderSuggestionPrompt ReminderSuggestionPrompt?
+  buyNothingDayDeliveries  BuyNothingDayDelivery[]
   plannedPayments          PlannedPayment[]
   accounts                 Account[]
   gamification             UserGamification?
@@ -186,6 +187,19 @@ model ReminderSuggestionPrompt {
   user      TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("reminder_suggestion_prompts")
+}
+
+model BuyNothingDayDelivery {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  eventYear Int          @map("event_year")
+  sentAt    DateTime     @default(now()) @map("sent_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+  user      TelegramUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventYear])
+  @@index([eventYear])
+  @@map("buy_nothing_day_deliveries")
 }
 
 model UserCategory {

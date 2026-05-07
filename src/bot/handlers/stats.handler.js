@@ -1,4 +1,4 @@
-const { actions, replyLabels } = require('../keyboards');
+const { actions, replyLabels, statsManageKeyboard } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   getCurrentMonthBalance,
@@ -10,6 +10,14 @@ const { getAccounts, summarizeAccounts } = require('../../services/account.servi
 const { resetDialogState } = require('../../services/dialogState.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { getMarketRatesSnapshot } = require('../../services/marketRates.service');
+const {
+  sendExpensesExport,
+  sendMonthChart,
+  sendMonthComparison,
+  sendTodayStats,
+  sendTopMonthExpenses,
+  sendWeekStats,
+} = require('./report.handler');
 const { formatMoney } = require('../../utils/money');
 
 function formatCategoryRows(rows, emptyText) {
@@ -248,7 +256,7 @@ async function sendMonthStats(ctx) {
   await resetDialogState(user.id);
   const stats = await getCurrentMonthBalance(user.id);
 
-  await ctx.reply(formatStats(stats));
+  await ctx.reply(formatStats(stats), statsManageKeyboard());
 }
 
 async function sendPreviousMonthStats(ctx) {
@@ -310,6 +318,41 @@ function registerStatsHandlers(bot) {
   bot.action(actions.STATS_PREVIOUS_MONTH, async (ctx) => {
     await ctx.answerCbQuery();
     await sendPreviousMonthStats(ctx);
+  });
+
+  bot.action(actions.STATS_TODAY, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendTodayStats(ctx);
+  });
+
+  bot.action(actions.STATS_WEEK, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendWeekStats(ctx);
+  });
+
+  bot.action(actions.STATS_COMPARE, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendMonthComparison(ctx);
+  });
+
+  bot.action(actions.STATS_TOP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendTopMonthExpenses(ctx);
+  });
+
+  bot.action(actions.STATS_CHART, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendMonthChart(ctx);
+  });
+
+  bot.action(actions.STATS_EXPORT_CSV, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendExpensesExport(ctx, 'csv');
+  });
+
+  bot.action(actions.STATS_EXPORT_XLSX, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendExpensesExport(ctx, 'xlsx');
   });
 }
 

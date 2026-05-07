@@ -1,9 +1,11 @@
+const { doneNoExpenseConfirmKeyboard } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   achievementMeta,
   formatAchievement,
   getMoscowDateKey,
   getProfile,
+  hasExpensesOnDate,
   isDateKeyTodayOrYesterday,
   markNoExpenseDay,
 } = require('../../services/gamification.service');
@@ -95,6 +97,48 @@ function buildDoneReply(result, dateKey) {
   ].join('\n');
 }
 
+async function sendDoneConfirmation(ctx, user, dateKey) {
+  const hasExpenses = await hasExpensesOnDate({ userId: user.id, dateKey });
+
+  if (hasExpenses) {
+    await ctx.reply(
+      `За ${dateKey} уже есть расходы, поэтому отметить этот день как день без расходов нельзя.`
+    );
+    return;
+  }
+
+  await ctx.reply(
+    [
+      `Подтвердите: ${dateKey} действительно был днем без расходов?`,
+      '',
+      'После подтверждения день будет учтен в серии.',
+    ].join('\n'),
+    doneNoExpenseConfirmKeyboard(dateKey)
+  );
+}
+
+async function confirmNoExpenseDay(ctx, dateKey) {
+  const user = await upsertTelegramUser(ctx.from);
+
+  if (!isDateKeyTodayOrYesterday(dateKey)) {
+    await ctx.reply('Эту отметку уже нельзя подтвердить. Можно отметить только сегодня или вчера.');
+    return;
+  }
+
+  const hasExpenses = await hasExpensesOnDate({ userId: user.id, dateKey });
+
+  if (hasExpenses) {
+    await ctx.reply(
+      `За ${dateKey} уже есть расходы, поэтому отметить этот день как день без расходов нельзя.`
+    );
+    return;
+  }
+
+  const result = await markNoExpenseDay({ userId: user.id, dateKey });
+
+  await ctx.reply(buildDoneReply(result, dateKey));
+}
+
 function registerGamificationHandlers(bot) {
   bot.command('profile', async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
@@ -119,9 +163,12 @@ function registerGamificationHandlers(bot) {
       return;
     }
 
-    const result = await markNoExpenseDay({ userId: user.id, dateKey });
+    await sendDoneConfirmation(ctx, user, dateKey);
+  });
 
-    await ctx.reply(buildDoneReply(result, dateKey));
+  bot.action(/^DONE_NO_EXPENSE_CONFIRM:(\d{4}-\d{2}-\d{2})$/u, async (ctx) => {
+    await ctx.answerCbQuery();
+    await confirmNoExpenseDay(ctx, ctx.match[1]);
   });
 }
 

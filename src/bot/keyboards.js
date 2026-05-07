@@ -5,6 +5,13 @@ const actions = {
   ADD_INCOME: 'ADD_INCOME',
   STATS_MONTH: 'STATS_MONTH',
   STATS_PREVIOUS_MONTH: 'STATS_PREVIOUS_MONTH',
+  STATS_TODAY: 'STATS_TODAY',
+  STATS_WEEK: 'STATS_WEEK',
+  STATS_COMPARE: 'STATS_COMPARE',
+  STATS_TOP: 'STATS_TOP',
+  STATS_CHART: 'STATS_CHART',
+  STATS_EXPORT_CSV: 'STATS_EXPORT_CSV',
+  STATS_EXPORT_XLSX: 'STATS_EXPORT_XLSX',
   RECENT_EXPENSES: 'RECENT_EXPENSES',
   RECENT_EXPENSES_NEXT: 'RECENT_EXPENSES_NEXT',
   DELETE_EXPENSE: 'DELETE_EXPENSE',
@@ -35,6 +42,7 @@ const actions = {
   REMINDER_CHECK: 'REMINDER_CHECK',
   REMINDER_RUN: 'REMINDER_RUN',
   REPEAT_CATEGORY: 'REPEAT_CATEGORY',
+  DONE_NO_EXPENSE_CONFIRM: 'DONE_NO_EXPENSE_CONFIRM',
   CANCEL: 'CANCEL',
 };
 
@@ -126,6 +134,18 @@ function clearExpensesConfirmKeyboard(scope) {
       Markup.button.callback(label, confirmAction),
       Markup.button.callback('Отмена', actions.CANCEL),
     ],
+  ]);
+}
+
+function doneNoExpenseConfirmKeyboard(dateKey) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback(
+        'Да, день без расходов',
+        `${actions.DONE_NO_EXPENSE_CONFIRM}:${dateKey}`
+      ),
+    ],
+    [Markup.button.callback('Отмена', actions.CANCEL)],
   ]);
 }
 
@@ -357,6 +377,27 @@ function recentExpensesKeyboard(nextOffset, options = {}) {
   ]);
 }
 
+function statsManageKeyboard() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('Сегодня', actions.STATS_TODAY),
+      Markup.button.callback('Неделя', actions.STATS_WEEK),
+    ],
+    [
+      Markup.button.callback('Прошлый месяц', actions.STATS_PREVIOUS_MONTH),
+      Markup.button.callback('Сравнение', actions.STATS_COMPARE),
+    ],
+    [
+      Markup.button.callback('Топ трат', actions.STATS_TOP),
+      Markup.button.callback('График расходов', actions.STATS_CHART),
+    ],
+    [
+      Markup.button.callback('CSV', actions.STATS_EXPORT_CSV),
+      Markup.button.callback('XLSX', actions.STATS_EXPORT_XLSX),
+    ],
+  ]);
+}
+
 module.exports = {
   actions,
   accountsManageKeyboard,
@@ -371,6 +412,7 @@ module.exports = {
   clearExpensesConfirmKeyboard,
   deleteExpenseConfirmKeyboard,
   deleteExpenseListKeyboard,
+  doneNoExpenseConfirmKeyboard,
   editExpenseFieldKeyboard,
   editExpenseListKeyboard,
   familyOwnerKeyboard,
@@ -382,4 +424,5 @@ module.exports = {
   recentExpensesKeyboard,
   reminderManageKeyboard,
   replyLabels,
+  statsManageKeyboard,
 };

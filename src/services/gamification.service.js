@@ -10,6 +10,7 @@ const {
   updateGamification,
   updateTrackedDayXp,
 } = require('../repositories/gamification.repository');
+const { countExpensesInRange } = require('../repositories/expense.repository');
 
 const XP_BY_SOURCE = {
   TRANSACTION: 10,
@@ -54,6 +55,14 @@ function dateKeyToUtcDate(dateKey) {
   const [year, month, day] = dateKey.split('-').map(Number);
 
   return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+}
+
+function getMoscowDateRangeForDateKey(dateKey) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day, -3, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month - 1, day + 1, -3, 0, 0, 0));
+
+  return { start, end };
 }
 
 function shiftDateKey(dateKey, days) {
@@ -262,6 +271,13 @@ async function markNoExpenseDay({ userId, dateKey }) {
   return recordTrackedDay({ userId, source: 'MANUAL_DONE', dateKey });
 }
 
+async function hasExpensesOnDate({ userId, dateKey }) {
+  const { start, end } = getMoscowDateRangeForDateKey(dateKey);
+  const count = await countExpensesInRange({ userId, start, end });
+
+  return count > 0;
+}
+
 async function recordTransactionDay(userId) {
   return recordTrackedDay({ userId, source: 'TRANSACTION' });
 }
@@ -322,6 +338,7 @@ module.exports = {
   getLevelInfo,
   getMoscowDateKey,
   getProfile,
+  hasExpensesOnDate,
   getTrackedDaysForRange,
   getTrackedDaysCountForRange,
   isDateKeyTodayOrYesterday,

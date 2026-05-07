@@ -1,6 +1,6 @@
 const fs = require('fs');
 const {
-  buildMonthChartSvg,
+  buildMonthChartPng,
   exportMonthExpenses,
   getFamilySpendingByUser,
   getMonthComparison,
@@ -85,95 +85,98 @@ async function cleanupTemp(tempDir) {
   await fs.promises.rm(tempDir, { force: true, recursive: true });
 }
 
-function registerReportHandlers(bot) {
-  bot.command('today', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const rows = await getTodayStats(user.id);
+async function sendTodayStats(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const rows = await getTodayStats(user.id);
 
-    await ctx.reply(formatCategoryStats(rows, 'Расходы за сегодня'));
-  });
-
-  bot.command('week', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const rows = await getWeekStats(user.id);
-
-    await ctx.reply(formatCategoryStats(rows, 'Расходы за неделю'));
-  });
-
-  bot.command('compare', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const rows = await getMonthComparison(user.id);
-
-    await ctx.reply(formatComparison(rows));
-  });
-
-  bot.command('top', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const expenses = await getTopMonthExpenses(user.id);
-
-    await ctx.reply(formatTopExpenses(expenses));
-  });
-
-  bot.command('family_by_user', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const context = await getFamilyContext(user.id);
-
-    if (!context) {
-      await ctx.reply('Сначала создайте семейный счет или присоединитесь к нему.');
-      return;
-    }
-
-    const range = getCurrentMonthRange();
-    const rows = await getFamilySpendingByUser({
-      userIds: context.memberUserIds,
-      start: range.start,
-      end: range.end,
-    });
-
-    await ctx.reply(formatFamilyByUser(rows, context));
-  });
-
-  bot.command('export_csv', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const exported = await exportMonthExpenses({ userId: user.id, format: 'csv' });
-
-    try {
-      await ctx.replyWithDocument({
-        source: exported.filePath,
-        filename: 'expenses-current-month.csv',
-      });
-    } finally {
-      await cleanupTemp(exported.tempDir);
-    }
-  });
-
-  bot.command('export_xlsx', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const exported = await exportMonthExpenses({ userId: user.id, format: 'xlsx' });
-
-    try {
-      await ctx.replyWithDocument({
-        source: exported.filePath,
-        filename: 'expenses-current-month.xlsx',
-      });
-    } finally {
-      await cleanupTemp(exported.tempDir);
-    }
-  });
-
-  bot.command('chart', async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
-    const chart = await buildMonthChartSvg(user.id);
-
-    try {
-      await ctx.replyWithDocument({
-        source: chart.filePath,
-        filename: 'expenses-chart.svg',
-      });
-    } finally {
-      await cleanupTemp(chart.tempDir);
-    }
-  });
+  await ctx.reply(formatCategoryStats(rows, 'Расходы за сегодня'));
 }
 
-module.exports = { registerReportHandlers };
+async function sendWeekStats(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const rows = await getWeekStats(user.id);
+
+  await ctx.reply(formatCategoryStats(rows, 'Расходы за неделю'));
+}
+
+async function sendMonthComparison(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const rows = await getMonthComparison(user.id);
+
+  await ctx.reply(formatComparison(rows));
+}
+
+async function sendTopMonthExpenses(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const expenses = await getTopMonthExpenses(user.id);
+
+  await ctx.reply(formatTopExpenses(expenses));
+}
+
+async function sendFamilySpendingByUser(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const context = await getFamilyContext(user.id);
+
+  if (!context) {
+    await ctx.reply('Сначала создайте семейный счет или присоединитесь к нему.');
+    return;
+  }
+
+  const range = getCurrentMonthRange();
+  const rows = await getFamilySpendingByUser({
+    userIds: context.memberUserIds,
+    start: range.start,
+    end: range.end,
+  });
+
+  await ctx.reply(formatFamilyByUser(rows, context));
+}
+
+async function sendExpensesExport(ctx, format) {
+  const user = await upsertTelegramUser(ctx.from);
+  const exported = await exportMonthExpenses({ userId: user.id, format });
+  const extension = format === 'xlsx' ? 'xlsx' : 'csv';
+
+  try {
+    await ctx.replyWithDocument({
+      source: exported.filePath,
+      filename: `expenses-current-month.${extension}`,
+    });
+  } finally {
+    await cleanupTemp(exported.tempDir);
+  }
+}
+
+async function sendMonthChart(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const chart = await buildMonthChartPng(user.id);
+
+  try {
+    await ctx.replyWithPhoto({
+      source: chart.filePath,
+    });
+  } finally {
+    await cleanupTemp(chart.tempDir);
+  }
+}
+
+function registerReportHandlers(bot) {
+  bot.command('today', sendTodayStats);
+  bot.command('week', sendWeekStats);
+  bot.command('compare', sendMonthComparison);
+  bot.command('top', sendTopMonthExpenses);
+  bot.command('family_by_user', sendFamilySpendingByUser);
+  bot.command('export_csv', (ctx) => sendExpensesExport(ctx, 'csv'));
+  bot.command('export_xlsx', (ctx) => sendExpensesExport(ctx, 'xlsx'));
+  bot.command('chart', sendMonthChart);
+}
+
+module.exports = {
+  registerReportHandlers,
+  sendExpensesExport,
+  sendMonthChart,
+  sendMonthComparison,
+  sendTodayStats,
+  sendTopMonthExpenses,
+  sendWeekStats,
+};

@@ -4,7 +4,7 @@ const botCommands = [
   { command: 'cancel', description: 'Отменить текущее действие' },
   { command: 'add', description: 'Добавить расход' },
   { command: 'add_income', description: 'Добавить доход' },
-  { command: 'stats', description: 'Статистика за текущий месяц' },
+  { command: 'stats', description: 'Статистика, график и экспорт' },
   { command: 'balance', description: 'Баланс и деньги сейчас' },
   { command: 'exchange_rate', description: 'Курсы валют и рынков' },
   { command: 'accounts', description: 'Счета и накопления' },
