@@ -27,7 +27,7 @@ function formatCategoryStats(rows, title) {
   return `${title}:\n\n${lines.join('\n')}`;
 }
 
-function formatComparison(rows) {
+function formatComparison(rows, title = 'Сравнение с прошлым месяцем') {
   if (rows.length === 0) {
     return 'Сравнивать пока нечего.';
   }
@@ -44,21 +44,23 @@ function formatComparison(rows) {
     )}, ${percentText})`;
   });
 
-  return `Сравнение с прошлым месяцем:\n\n${lines.join('\n')}`;
+  return `${title}:\n\n${lines.join('\n')}`;
 }
 
-function formatTopExpenses(expenses) {
+function formatTopExpenses(expenses, title = 'Топ трат месяца', options = {}) {
   if (expenses.length === 0) {
     return 'В этом месяце трат пока нет.';
   }
 
   const lines = expenses.map((expense, index) => {
-    return `${index + 1}. ${formatDateTime(expense.expenseDate)} | ${expense.category} | ${
-      expense.description
-    } | ${formatMoney(expense.amount, expense.currency)}`;
+    const userText = options.includeUser ? ` | ${getDisplayName(expense.user)}` : '';
+
+    return `${index + 1}. ${formatDateTime(expense.expenseDate)}${userText} | ${
+      expense.category
+    } | ${expense.description} | ${formatMoney(expense.amount, expense.currency)}`;
   });
 
-  return `Топ трат месяца:\n\n${lines.join('\n')}`;
+  return `${title}:\n\n${lines.join('\n')}`;
 }
 
 function getDisplayName(user) {
@@ -85,32 +87,81 @@ async function cleanupTemp(tempDir) {
   await fs.promises.rm(tempDir, { force: true, recursive: true });
 }
 
-async function sendTodayStats(ctx) {
+async function getExpenseReportScope(ctx, options = {}) {
   const user = await upsertTelegramUser(ctx.from);
-  const rows = await getTodayStats(user.id);
 
-  await ctx.reply(formatCategoryStats(rows, 'Расходы за сегодня'));
+  if (!options.family) {
+    return {
+      ok: true,
+      scope: { userId: user.id },
+    };
+  }
+
+  const context = await getFamilyContext(user.id);
+
+  if (!context) {
+    await ctx.reply('Сначала создайте семейный счет или присоединитесь к нему.');
+    return { ok: false };
+  }
+
+  return {
+    ok: true,
+    scope: { userIds: context.memberUserIds },
+  };
 }
 
-async function sendWeekStats(ctx) {
-  const user = await upsertTelegramUser(ctx.from);
-  const rows = await getWeekStats(user.id);
+async function sendTodayStats(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
 
-  await ctx.reply(formatCategoryStats(rows, 'Расходы за неделю'));
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const rows = await getTodayStats(reportScope.scope);
+  const title = options.family ? 'Семейные расходы за сегодня' : 'Расходы за сегодня';
+
+  await ctx.reply(formatCategoryStats(rows, title));
 }
 
-async function sendMonthComparison(ctx) {
-  const user = await upsertTelegramUser(ctx.from);
-  const rows = await getMonthComparison(user.id);
+async function sendWeekStats(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
 
-  await ctx.reply(formatComparison(rows));
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const rows = await getWeekStats(reportScope.scope);
+  const title = options.family ? 'Семейные расходы за неделю' : 'Расходы за неделю';
+
+  await ctx.reply(formatCategoryStats(rows, title));
 }
 
-async function sendTopMonthExpenses(ctx) {
-  const user = await upsertTelegramUser(ctx.from);
-  const expenses = await getTopMonthExpenses(user.id);
+async function sendMonthComparison(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
 
-  await ctx.reply(formatTopExpenses(expenses));
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const rows = await getMonthComparison(reportScope.scope);
+  const title = options.family
+    ? 'Сравнение семейных расходов с прошлым месяцем'
+    : 'Сравнение с прошлым месяцем';
+
+  await ctx.reply(formatComparison(rows, title));
+}
+
+async function sendTopMonthExpenses(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
+
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const expenses = await getTopMonthExpenses(reportScope.scope);
+  const title = options.family ? 'Топ семейных трат месяца' : 'Топ трат месяца';
+
+  await ctx.reply(formatTopExpenses(expenses, title, { includeUser: options.family }));
 }
 
 async function sendFamilySpendingByUser(ctx) {
@@ -132,24 +183,37 @@ async function sendFamilySpendingByUser(ctx) {
   await ctx.reply(formatFamilyByUser(rows, context));
 }
 
-async function sendExpensesExport(ctx, format) {
-  const user = await upsertTelegramUser(ctx.from);
-  const exported = await exportMonthExpenses({ userId: user.id, format });
+async function sendExpensesExport(ctx, format, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
+
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const exported = await exportMonthExpenses({ ...reportScope.scope, format });
   const extension = format === 'xlsx' ? 'xlsx' : 'csv';
+  const filenamePrefix = options.family ? 'family-expenses-current-month' : 'expenses-current-month';
 
   try {
     await ctx.replyWithDocument({
       source: exported.filePath,
-      filename: `expenses-current-month.${extension}`,
+      filename: `${filenamePrefix}.${extension}`,
     });
   } finally {
     await cleanupTemp(exported.tempDir);
   }
 }
 
-async function sendMonthChart(ctx) {
-  const user = await upsertTelegramUser(ctx.from);
-  const chart = await buildMonthChartPng(user.id);
+async function sendMonthChart(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
+
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const chart = await buildMonthChartPng(reportScope.scope, {
+    title: options.family ? 'Семейные расходы за месяц' : 'Расходы за месяц',
+  });
 
   try {
     await ctx.replyWithPhoto({

@@ -1,10 +1,18 @@
-const { actions, replyLabels, statsManageKeyboard } = require('../keyboards');
+const {
+  actions,
+  familyStatsManageKeyboard,
+  replyLabels,
+  statsManageKeyboard,
+} = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   getCurrentMonthBalance,
   getCurrentMonthIncomeStats,
+  getCurrentMonthStatsForUsers,
   getPreviousMonthBalance,
+  getPreviousMonthStatsForUsers,
 } = require('../../services/stats.service');
+const { getFamilyContext } = require('../../services/family.service');
 const { buildWeeklyReport } = require('../../services/weeklyReport.service');
 const { getAccounts, summarizeAccounts } = require('../../services/account.service');
 const { resetDialogState } = require('../../services/dialogState.service');
@@ -66,6 +74,18 @@ function formatStats({ expenses, incomes }, title = 'Статистика за �
     'Доходы:',
     incomeStats.lines.join('\n'),
     ...(incomeStats.totals.length > 0 ? ['', `Итого доходов: ${incomeStats.totals.join(', ')}`] : []),
+  ].join('\n');
+}
+
+function formatExpenseOnlyStats(rows, title) {
+  const expenseStats = formatCategoryRows(rows, 'Расходов пока нет.');
+
+  return [
+    title,
+    '',
+    'Расходы:',
+    expenseStats.lines.join('\n'),
+    ...(expenseStats.totals.length > 0 ? ['', `Итого расходов: ${expenseStats.totals.join(', ')}`] : []),
   ].join('\n');
 }
 
@@ -267,6 +287,49 @@ async function sendPreviousMonthStats(ctx) {
   await ctx.reply(formatStats(stats, 'Статистика за прошлый месяц'));
 }
 
+async function getFamilyStatsContext(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
+  const context = await getFamilyContext(user.id);
+
+  if (!context) {
+    await ctx.reply('Сначала создайте семейный счет или присоединитесь к нему.');
+    return null;
+  }
+
+  return context;
+}
+
+async function sendFamilyMonthStats(ctx) {
+  const context = await getFamilyStatsContext(ctx);
+
+  if (!context) {
+    return;
+  }
+
+  const rows = await getCurrentMonthStatsForUsers(context.memberUserIds);
+
+  await ctx.reply(
+    formatExpenseOnlyStats(rows, 'Семейные расходы за текущий месяц'),
+    familyStatsManageKeyboard()
+  );
+}
+
+async function sendFamilyPreviousMonthStats(ctx) {
+  const context = await getFamilyStatsContext(ctx);
+
+  if (!context) {
+    return;
+  }
+
+  const rows = await getPreviousMonthStatsForUsers(context.memberUserIds);
+
+  await ctx.reply(
+    formatExpenseOnlyStats(rows, 'Семейные расходы за прошлый месяц'),
+    familyStatsManageKeyboard()
+  );
+}
+
 async function sendMonthBalance(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   await resetDialogState(user.id);
@@ -320,6 +383,16 @@ function registerStatsHandlers(bot) {
     await sendPreviousMonthStats(ctx);
   });
 
+  bot.action(actions.STATS_FAMILY_MONTH, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendFamilyMonthStats(ctx);
+  });
+
+  bot.action(actions.STATS_FAMILY_PREVIOUS_MONTH, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendFamilyPreviousMonthStats(ctx);
+  });
+
   bot.action(actions.STATS_TODAY, async (ctx) => {
     await ctx.answerCbQuery();
     await sendTodayStats(ctx);
@@ -353,6 +426,41 @@ function registerStatsHandlers(bot) {
   bot.action(actions.STATS_EXPORT_XLSX, async (ctx) => {
     await ctx.answerCbQuery();
     await sendExpensesExport(ctx, 'xlsx');
+  });
+
+  bot.action(actions.STATS_FAMILY_TODAY, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendTodayStats(ctx, { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_WEEK, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendWeekStats(ctx, { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_COMPARE, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendMonthComparison(ctx, { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_TOP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendTopMonthExpenses(ctx, { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_CHART, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendMonthChart(ctx, { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_EXPORT_CSV, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendExpensesExport(ctx, 'csv', { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_EXPORT_XLSX, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendExpensesExport(ctx, 'xlsx', { family: true });
   });
 }
 

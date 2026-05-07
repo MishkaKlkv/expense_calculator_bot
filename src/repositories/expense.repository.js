@@ -31,6 +31,37 @@ async function findRecentExpenses({ userId, userIds, limit = 10, offset = 0 }) {
   });
 }
 
+async function searchExpenses({ userId, query, limit = 10 }) {
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  return prisma.expense.findMany({
+    where: {
+      userId,
+      type: 'EXPENSE',
+      OR: [
+        {
+          description: {
+            contains: normalizedQuery,
+            mode: 'insensitive',
+          },
+        },
+        {
+          category: {
+            contains: normalizedQuery,
+            mode: 'insensitive',
+          },
+        },
+      ],
+    },
+    orderBy: [{ expenseDate: 'desc' }, { id: 'desc' }],
+    take: limit,
+  });
+}
+
 async function findRecentTransactions({ userId, limit = 10 }) {
   return prisma.expense.findMany({
     where: {
@@ -236,6 +267,7 @@ module.exports = {
   findRecentTransactions,
   findTopExpenses,
   findTransactionByIdForUser,
+  searchExpenses,
   updateExpenseByIdForUser,
   updateTransactionByIdForUser,
 };

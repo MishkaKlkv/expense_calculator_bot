@@ -42,6 +42,12 @@ async function getCurrentMonthStatsForUsers(userIds) {
   return aggregateExpensesByCategory({ userIds, start, end });
 }
 
+async function getPreviousMonthStatsForUsers(userIds) {
+  const { start, end } = getPreviousMonthRange();
+
+  return aggregateExpensesByCategory({ userIds, start, end });
+}
+
 async function getRecentExpenses(userId, limit = 10, offset = 0) {
   return findRecentExpenses({ userId, limit, offset });
 }
@@ -56,6 +62,7 @@ module.exports = {
   getCurrentMonthStats,
   getCurrentMonthStatsForUsers,
   getPreviousMonthBalance,
+  getPreviousMonthStatsForUsers,
   getRecentExpenses,
   getRecentExpensesForUsers,
 };

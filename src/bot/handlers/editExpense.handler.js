@@ -1,5 +1,6 @@
 const {
   actions,
+  categoryNamesKeyboard,
   editExpenseFieldKeyboard,
   editExpenseListKeyboard,
   replyLabels,
@@ -10,6 +11,7 @@ const {
   getExpenseForEdit,
   updateExpenseField,
 } = require('../../services/editExpense.service');
+const { getUserCategoryNames } = require('../../services/category.service');
 const { deleteExpense } = require('../../services/deleteExpense.service');
 const {
   getDialogState,
@@ -138,6 +140,49 @@ function registerEditExpenseHandlers(bot) {
       field,
     });
     await ctx.reply(getFieldPrompt(field, expense.type));
+  });
+
+  bot.action(/^QUICK_EDIT_CATEGORY:(.+)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const expenseId = ctx.match[1];
+    const expense = await getExpenseForEdit({ expenseId, userId: user.id });
+
+    await ctx.answerCbQuery();
+
+    if (!expense) {
+      await showMainMenu(ctx, 'Не нашел эту операцию или у вас нет прав ее редактировать.');
+      return;
+    }
+
+    const categories = await getUserCategoryNames({ userId: user.id, type: expense.type });
+
+    await ctx.replyTemporary(
+      'Выберите новую категорию:',
+      categoryNamesKeyboard(categories, `QUICK_SET_CATEGORY:${expenseId}`)
+    );
+  });
+
+  bot.action(/^QUICK_SET_CATEGORY:(.+):(.+)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const expenseId = ctx.match[1];
+    const category = ctx.match[2];
+
+    await ctx.answerCbQuery();
+    const result = await updateExpenseField({
+      expenseId,
+      userId: user.id,
+      field: 'category',
+      value: category,
+    });
+
+    await resetDialogState(user.id);
+
+    if (!result.ok) {
+      await showMainMenu(ctx, getEditErrorText(result.reason));
+      return;
+    }
+
+    await showMainMenu(ctx, `Категория обновлена: ${result.category || category}.`);
   });
 
   bot.action(/^QUICK_DELETE:(.+)$/u, async (ctx) => {

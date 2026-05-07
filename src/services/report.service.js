@@ -10,6 +10,7 @@ const {
   findTopExpenses,
 } = require('../repositories/expense.repository');
 const {
+  formatDateTime,
   getCurrentMonthRange,
   getCurrentWeekRange,
   getPreviousMonthRange,
@@ -26,6 +27,17 @@ const EXPORT_COLUMNS = [
   { header: 'Валюта', key: 'currency', width: 10 },
 ];
 
+function normalizeUserScope(scope) {
+  if (typeof scope === 'object' && scope !== null) {
+    return {
+      userId: scope.userId,
+      userIds: scope.userIds,
+    };
+  }
+
+  return { userId: scope };
+}
+
 function getNetAmount(row) {
   return Number(row._sum.amount || 0);
 }
@@ -39,21 +51,22 @@ async function getCategoryStatsForRange({ userId, userIds, range }) {
   });
 }
 
-async function getTodayStats(userId) {
-  return getCategoryStatsForRange({ userId, range: getTodayRange() });
+async function getTodayStats(scope) {
+  return getCategoryStatsForRange({ ...normalizeUserScope(scope), range: getTodayRange() });
 }
 
-async function getWeekStats(userId) {
-  return getCategoryStatsForRange({ userId, range: getCurrentWeekRange() });
+async function getWeekStats(scope) {
+  return getCategoryStatsForRange({ ...normalizeUserScope(scope), range: getCurrentWeekRange() });
 }
 
-async function getMonthComparison(userId) {
+async function getMonthComparison(scope) {
+  const userScope = normalizeUserScope(scope);
   const current = await getCategoryStatsForRange({
-    userId,
+    ...userScope,
     range: getCurrentMonthRange(),
   });
   const previous = await getCategoryStatsForRange({
-    userId,
+    ...userScope,
     range: getPreviousMonthRange(),
   });
   const map = new Map();
@@ -83,9 +96,9 @@ async function getMonthComparison(userId) {
   return Array.from(map.values()).sort((a, b) => b.current - a.current);
 }
 
-async function getTopMonthExpenses(userId, limit = 5) {
+async function getTopMonthExpenses(scope, limit = 5) {
   const range = getCurrentMonthRange();
-  return findTopExpenses({ userId, start: range.start, end: range.end, limit });
+  return findTopExpenses({ ...normalizeUserScope(scope), start: range.start, end: range.end, limit });
 }
 
 async function getFamilySpendingByUser({ userIds, start, end }) {
@@ -94,7 +107,7 @@ async function getFamilySpendingByUser({ userIds, start, end }) {
 
 function buildExportRows(expenses) {
   return expenses.map((expense) => ({
-    date: expense.expenseDate,
+    date: formatDateTime(expense.expenseDate),
     user: expense.user?.firstName || expense.user?.username || String(expense.telegramUserId),
     category: expense.category,
     description: expense.description,
@@ -130,8 +143,7 @@ async function exportMonthExpenses({ userId, userIds, format = 'csv' }) {
       ...rows.map((row) =>
         keys
           .map((key) => {
-            const value = row[key] instanceof Date ? row[key].toISOString() : row[key];
-            return `"${String(value ?? '').replace(/"/g, '""')}"`;
+            return `"${String(row[key] ?? '').replace(/"/g, '""')}"`;
           })
           .join(',')
       ),
@@ -199,7 +211,8 @@ function groupChartRows(rows) {
   return [...visibleRows, { category: 'Другое', value: otherValue }];
 }
 
-function buildMonthChartSvgContent(rows) {
+function buildMonthChartSvgContent(rows, options = {}) {
+  const { title = 'Расходы за месяц' } = options;
   const chartRows = groupChartRows(rows);
   const total = chartRows.reduce((sum, row) => sum + row.value, 0);
   const colors = [
@@ -222,7 +235,7 @@ function buildMonthChartSvgContent(rows) {
     return [
       `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
       '<rect width="100%" height="100%" fill="#ffffff" />',
-      '<text x="60" y="82" font-size="36" font-weight="700" fill="#111">Расходы за месяц</text>',
+      `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
       '<text x="60" y="140" font-size="24" fill="#555">Нет расходов в RUB за текущий месяц</text>',
       '</svg>',
     ].join('\n');
@@ -266,7 +279,7 @@ function buildMonthChartSvgContent(rows) {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
     '<rect width="100%" height="100%" fill="#ffffff" />',
-    '<text x="60" y="82" font-size="36" font-weight="700" fill="#111">Расходы за месяц</text>',
+    `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
     '<text x="60" y="122" font-size="21" fill="#555">По категориям, RUB</text>',
     slices,
     `<circle cx="${centerX}" cy="${centerY}" r="96" fill="#ffffff" />`,
@@ -277,9 +290,9 @@ function buildMonthChartSvgContent(rows) {
   ].join('\n');
 }
 
-async function buildMonthChartPng(userId) {
+async function buildMonthChartPng(scope, options = {}) {
   const rows = await getCategoryStatsForRange({
-    userId,
+    ...normalizeUserScope(scope),
     range: getCurrentMonthRange(),
   });
   const rubRows = rows
@@ -290,7 +303,7 @@ async function buildMonthChartPng(userId) {
     }))
     .filter((row) => row.value > 0)
     .sort((a, b) => b.value - a.value);
-  const svg = buildMonthChartSvgContent(rubRows);
+  const svg = buildMonthChartSvgContent(rubRows, options);
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'expense-chart-'));
   const filePath = path.join(tempDir, `chart-${Date.now()}.png`);
 

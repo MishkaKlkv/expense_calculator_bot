@@ -1,3 +1,5 @@
+const DEFAULT_TIMEZONE = 'Europe/Moscow';
+
 function getCurrentMonthRange(now = new Date()) {
   const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
@@ -35,17 +37,20 @@ function getPreviousWeekRange(now = new Date()) {
   return { start, end: currentWeek.start };
 }
 
-function formatDateTime(date) {
+function formatDateTime(date, timezone = DEFAULT_TIMEZONE) {
   return new Intl.DateTimeFormat('ru-RU', {
     day: '2-digit',
     month: '2-digit',
+    timeZone: timezone,
     year: 'numeric',
     hour: '2-digit',
+    hourCycle: 'h23',
     minute: '2-digit',
   }).format(date);
 }
 
 module.exports = {
+  DEFAULT_TIMEZONE,
   formatDateTime,
   getCurrentMonthRange,
   getCurrentWeekRange,

@@ -1,4 +1,10 @@
-const { actions, familyOwnerKeyboard, recentExpensesKeyboard, replyLabels } = require('../keyboards');
+const {
+  actions,
+  familyOwnerKeyboard,
+  familyStatsManageKeyboard,
+  recentExpensesKeyboard,
+  replyLabels,
+} = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   createFamily,
@@ -138,7 +144,7 @@ async function sendFamilyStats(ctx) {
   }
 
   const stats = await getCurrentMonthStatsForUsers(context.memberUserIds);
-  await ctx.reply(formatStats(stats));
+  await ctx.reply(formatStats(stats), familyStatsManageKeyboard());
 }
 
 async function sendFamilyRecent(ctx, offset = 0) {

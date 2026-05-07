@@ -12,6 +12,15 @@ const actions = {
   STATS_CHART: 'STATS_CHART',
   STATS_EXPORT_CSV: 'STATS_EXPORT_CSV',
   STATS_EXPORT_XLSX: 'STATS_EXPORT_XLSX',
+  STATS_FAMILY_MONTH: 'STATS_FAMILY_MONTH',
+  STATS_FAMILY_TODAY: 'STATS_FAMILY_TODAY',
+  STATS_FAMILY_WEEK: 'STATS_FAMILY_WEEK',
+  STATS_FAMILY_PREVIOUS_MONTH: 'STATS_FAMILY_PREVIOUS_MONTH',
+  STATS_FAMILY_COMPARE: 'STATS_FAMILY_COMPARE',
+  STATS_FAMILY_TOP: 'STATS_FAMILY_TOP',
+  STATS_FAMILY_CHART: 'STATS_FAMILY_CHART',
+  STATS_FAMILY_EXPORT_CSV: 'STATS_FAMILY_EXPORT_CSV',
+  STATS_FAMILY_EXPORT_XLSX: 'STATS_FAMILY_EXPORT_XLSX',
   RECENT_EXPENSES: 'RECENT_EXPENSES',
   RECENT_EXPENSES_NEXT: 'RECENT_EXPENSES_NEXT',
   DELETE_EXPENSE: 'DELETE_EXPENSE',
@@ -206,10 +215,22 @@ function quickEditRows(transactionId) {
 }
 
 function afterExpenseKeyboard(category, transactionId) {
+  const categoryFixRows = transactionId
+    ? [
+        [
+          ...(category === 'Продукты'
+            ? []
+            : [Markup.button.callback('Это продукты', `QUICK_SET_CATEGORY:${transactionId}:Продукты`)]),
+          Markup.button.callback('Другая категория', `QUICK_EDIT_CATEGORY:${transactionId}`),
+        ],
+      ]
+    : [];
+
   return Markup.inlineKeyboard([
     ...quickEditRows(transactionId),
+    ...categoryFixRows,
     [Markup.button.callback(`Добавить еще в ${category}`, `${actions.REPEAT_CATEGORY}:${category}`)],
-    [Markup.button.callback('Другая категория', actions.CHANGE_EXPENSE_CATEGORY)],
+    [Markup.button.callback('Добавить в другую категорию', actions.CHANGE_EXPENSE_CATEGORY)],
     [Markup.button.callback('Главное меню', 'SHOW_MENU')],
   ]);
 }
@@ -395,6 +416,7 @@ function recentExpensesKeyboard(nextOffset, options = {}) {
 
 function statsManageKeyboard() {
   return Markup.inlineKeyboard([
+    [Markup.button.callback('Семейная статистика', actions.STATS_FAMILY_MONTH)],
     [
       Markup.button.callback('Сегодня', actions.STATS_TODAY),
       Markup.button.callback('Неделя', actions.STATS_WEEK),
@@ -410,6 +432,28 @@ function statsManageKeyboard() {
     [
       Markup.button.callback('CSV', actions.STATS_EXPORT_CSV),
       Markup.button.callback('XLSX', actions.STATS_EXPORT_XLSX),
+    ],
+  ]);
+}
+
+function familyStatsManageKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('Личная статистика', actions.STATS_MONTH)],
+    [
+      Markup.button.callback('Сегодня', actions.STATS_FAMILY_TODAY),
+      Markup.button.callback('Неделя', actions.STATS_FAMILY_WEEK),
+    ],
+    [
+      Markup.button.callback('Прошлый месяц', actions.STATS_FAMILY_PREVIOUS_MONTH),
+      Markup.button.callback('Сравнение', actions.STATS_FAMILY_COMPARE),
+    ],
+    [
+      Markup.button.callback('Топ трат', actions.STATS_FAMILY_TOP),
+      Markup.button.callback('График расходов', actions.STATS_FAMILY_CHART),
+    ],
+    [
+      Markup.button.callback('CSV', actions.STATS_FAMILY_EXPORT_CSV),
+      Markup.button.callback('XLSX', actions.STATS_FAMILY_EXPORT_XLSX),
     ],
   ]);
 }
@@ -433,6 +477,7 @@ module.exports = {
   doneNoExpenseConfirmKeyboard,
   editExpenseFieldKeyboard,
   editExpenseListKeyboard,
+  familyStatsManageKeyboard,
   familyOwnerKeyboard,
   incomeCategoryKeyboard,
   mainMenuKeyboard,

@@ -10,6 +10,7 @@ const { registerRecentHandlers } = require('./handlers/recent.handler');
 const { registerPlannedPaymentHandlers } = require('./handlers/plannedPayment.handler');
 const { registerReminderHandlers } = require('./handlers/reminder.handler');
 const { registerReportHandlers } = require('./handlers/report.handler');
+const { registerSearchHandlers } = require('./handlers/search.handler');
 const { registerStatsHandlers } = require('./handlers/stats.handler');
 const { registerAdminHandlers } = require('./handlers/admin.handler');
 const { registerAccountHandlers } = require('./handlers/account.handler');
@@ -232,6 +233,7 @@ function registerBot(bot) {
   registerPlannedPaymentHandlers(bot);
   registerStatsHandlers(bot);
   registerReportHandlers(bot);
+  registerSearchHandlers(bot);
   registerRecentHandlers(bot);
   registerDeleteAccountHandlers(bot);
   registerClearExpensesHandlers(bot);

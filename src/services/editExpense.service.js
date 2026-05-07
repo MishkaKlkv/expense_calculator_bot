@@ -4,6 +4,7 @@ const {
   updateTransactionByIdForUser,
 } = require('../repositories/expense.repository');
 const { findUserCategoryName } = require('./category.service');
+const { learnAutoCategoryFromExpense } = require('./autoCategory.service');
 const { parseAmountWithCurrency } = require('./parser.service');
 
 async function getEditableExpenses(userId, limit = 10) {
@@ -77,7 +78,20 @@ async function updateExpenseField({ expenseId, userId, field, value }) {
     data: parsed.data,
   });
 
-  return { ok: result.count === 1 };
+  if (result.count !== 1) {
+    return { ok: false };
+  }
+
+  if (field === 'category' && expense.type === 'EXPENSE') {
+    await learnAutoCategoryFromExpense({
+      category: parsed.data.category,
+      description: expense.description,
+    }).catch((error) => {
+      console.error('[auto-category] failed to learn from category edit', error);
+    });
+  }
+
+  return { ok: true, category: parsed.data.category };
 }
 
 module.exports = {

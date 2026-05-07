@@ -16,6 +16,7 @@ const botCommands = [
   { command: 'streak', description: 'Серия учета' },
   { command: 'done', description: 'Отметить день без расходов' },
   { command: 'recent', description: 'Последние траты' },
+  { command: 'search', description: 'Найти траты' },
   { command: 'edit', description: 'Редактировать операцию' },
   { command: 'delete', description: 'Удалить операцию' },
 ];
