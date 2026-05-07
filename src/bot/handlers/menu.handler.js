@@ -183,7 +183,10 @@ function registerMenuHandlers(bot) {
   });
 
   bot.action('SHOW_MENU', async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+
     await ctx.answerCbQuery();
+    await resetDialogState(user.id);
     await showMainMenu(ctx);
   });
 

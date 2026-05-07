@@ -34,6 +34,10 @@ async function buildGamificationProgressText(userId) {
   return formatGamificationResult(progress);
 }
 
+async function rememberLastExpenseCategory(userId, category) {
+  return setDialogState(userId, 'ADD_EXPENSE_WAITING_FOR_DETAILS', { category });
+}
+
 async function handleIncomeInput(ctx, inputText, user, dialogState) {
   console.log(`[income:input] user=${ctx.from.id} state=${dialogState.state} text="${inputText}"`);
 
@@ -137,7 +141,7 @@ async function handleExpenseInput(ctx, inputText) {
     });
     const progressText = await buildGamificationProgressText(user.id);
 
-    await resetDialogState(user.id);
+    await rememberLastExpenseCategory(user.id, saved.expense.category);
     await ctx.reply(
       `Сохранил: ${saved.expense.description}, ${formatMoney(
         saved.expense.amount,
@@ -163,7 +167,7 @@ async function handleExpenseInput(ctx, inputText) {
     });
     const progressText = await buildGamificationProgressText(user.id);
 
-    await resetDialogState(user.id);
+    await rememberLastExpenseCategory(user.id, result.expense.category);
     await ctx.reply(
       `Сохранил: ${result.expense.description}, ${formatMoney(
         result.expense.amount,
@@ -200,7 +204,7 @@ async function handleExpenseInput(ctx, inputText) {
   });
   const progressText = await buildGamificationProgressText(user.id);
 
-  await resetDialogState(user.id);
+  await rememberLastExpenseCategory(user.id, saved.expense.category);
   await ctx.reply(
     `Сохранил: ${saved.expense.description}, ${formatMoney(
       saved.expense.amount,
