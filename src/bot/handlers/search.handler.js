@@ -1,3 +1,4 @@
+const { searchResultsKeyboard } = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const { normalizeSearchQuery, searchUserExpenses } = require('../../services/search.service');
 const { formatDateTime } = require('../../utils/date');
@@ -27,7 +28,10 @@ async function handleSearchCommand(ctx) {
   }
 
   const expenses = await searchUserExpenses({ userId: user.id, query });
-  await ctx.reply(formatSearchResults(expenses, query));
+  await ctx.reply(
+    formatSearchResults(expenses, query),
+    expenses.length > 0 ? searchResultsKeyboard(expenses) : undefined
+  );
 }
 
 function registerSearchHandlers(bot) {

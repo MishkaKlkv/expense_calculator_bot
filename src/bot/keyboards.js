@@ -72,6 +72,16 @@ function getUserButtonName(user) {
   return user.firstName || user.username || String(user.telegramUserId);
 }
 
+function truncateButtonText(value, maxLength = 48) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1)}…`;
+}
+
 function mainMenuKeyboard() {
   return Markup.inlineKeyboard([
     [
@@ -189,6 +199,18 @@ function editExpenseListKeyboard(expenses) {
   return Markup.inlineKeyboard(rows);
 }
 
+function searchResultsKeyboard(expenses) {
+  const rows = expenses.map((expense, index) => {
+    const label = truncateButtonText(`${index + 1}. ${expense.category} - ${expense.description}`);
+
+    return [Markup.button.callback(label, `EDIT_EXPENSE_SELECT:${expense.id}`)];
+  });
+
+  rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
+
+  return Markup.inlineKeyboard(rows);
+}
+
 function editExpenseFieldKeyboard(expenseId) {
   return Markup.inlineKeyboard([
     [
@@ -215,20 +237,11 @@ function quickEditRows(transactionId) {
 }
 
 function afterExpenseKeyboard(category, transactionId) {
-  const categoryFixRows = transactionId
-    ? [
-        [
-          ...(category === 'Продукты'
-            ? []
-            : [Markup.button.callback('Это продукты', `QUICK_SET_CATEGORY:${transactionId}:Продукты`)]),
-          Markup.button.callback('Другая категория', `QUICK_EDIT_CATEGORY:${transactionId}`),
-        ],
-      ]
-    : [];
-
   return Markup.inlineKeyboard([
     ...quickEditRows(transactionId),
-    ...categoryFixRows,
+    ...(transactionId
+      ? [[Markup.button.callback('Другая категория', `QUICK_EDIT_CATEGORY:${transactionId}`)]]
+      : []),
     [Markup.button.callback(`Добавить еще в ${category}`, `${actions.REPEAT_CATEGORY}:${category}`)],
     [Markup.button.callback('Добавить в другую категорию', actions.CHANGE_EXPENSE_CATEGORY)],
     [Markup.button.callback('Главное меню', 'SHOW_MENU')],
@@ -487,5 +500,6 @@ module.exports = {
   recentExpensesKeyboard,
   reminderManageKeyboard,
   replyLabels,
+  searchResultsKeyboard,
   statsManageKeyboard,
 };
