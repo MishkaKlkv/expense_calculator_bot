@@ -23,6 +23,8 @@ const actions = {
   STATS_FAMILY_EXPORT_XLSX: 'STATS_FAMILY_EXPORT_XLSX',
   RECENT_EXPENSES: 'RECENT_EXPENSES',
   RECENT_EXPENSES_NEXT: 'RECENT_EXPENSES_NEXT',
+  EDIT_EXPENSE_NEXT: 'EDIT_EXPENSE_NEXT',
+  DELETE_EXPENSE_NEXT: 'DELETE_EXPENSE_NEXT',
   DELETE_EXPENSE: 'DELETE_EXPENSE',
   EDIT_EXPENSE: 'EDIT_EXPENSE',
   FAMILY_INFO: 'FAMILY_INFO',
@@ -111,21 +113,25 @@ function mainMenuReplyKeyboard() {
     [replyLabels.ADD_EXPENSE, replyLabels.ADD_INCOME],
     [replyLabels.STATS_MONTH, replyLabels.RECENT_EXPENSES],
     [replyLabels.EDIT_EXPENSE, replyLabels.DELETE_EXPENSE],
-    [replyLabels.FAMILY_INFO, replyLabels.MENU],
+    [replyLabels.FAMILY_INFO],
     [replyLabels.HELP],
   ]).resize();
 }
 
-function deleteExpenseListKeyboard(expenses) {
+function deleteExpenseListKeyboard(expenses, options = {}) {
+  const { nextOffset = null, startIndex = 0 } = options;
   const rows = expenses.map((expense, index) => {
     return [
       Markup.button.callback(
-        `${index + 1}. ${expense.category} - ${expense.description}`,
+        `${startIndex + index + 1}. ${expense.category} - ${expense.description}`,
         `DELETE_EXPENSE_SELECT:${expense.id}`
       ),
     ];
   });
 
+  if (nextOffset !== null) {
+    rows.push([Markup.button.callback('Следующие 10', `${actions.DELETE_EXPENSE_NEXT}:${nextOffset}`)]);
+  }
   rows.push([
     Markup.button.callback('Очистить расходы месяца', actions.CLEAR_MONTH_EXPENSES),
   ]);
@@ -184,16 +190,20 @@ function deleteAccountNumberKeyboard(target, options) {
   );
 }
 
-function editExpenseListKeyboard(expenses) {
+function editExpenseListKeyboard(expenses, options = {}) {
+  const { nextOffset = null, startIndex = 0 } = options;
   const rows = expenses.map((expense, index) => {
     return [
       Markup.button.callback(
-        `${index + 1}. ${expense.category} - ${expense.description}`,
+        `${startIndex + index + 1}. ${expense.category} - ${expense.description}`,
         `EDIT_EXPENSE_SELECT:${expense.id}`
       ),
     ];
   });
 
+  if (nextOffset !== null) {
+    rows.push([Markup.button.callback('Следующие 10', `${actions.EDIT_EXPENSE_NEXT}:${nextOffset}`)]);
+  }
   rows.push([Markup.button.callback('Отмена', actions.CANCEL)]);
 
   return Markup.inlineKeyboard(rows);

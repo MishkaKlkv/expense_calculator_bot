@@ -22,6 +22,18 @@ const { formatDateTime } = require('../../utils/date');
 const { formatMoney } = require('../../utils/money');
 const { showMainMenu } = require('./menu.handler');
 
+const EDIT_EXPENSE_PAGE_SIZE = 10;
+
+function normalizeOffset(value) {
+  const offset = Number(value);
+
+  if (!Number.isInteger(offset) || offset < 0) {
+    return 0;
+  }
+
+  return offset;
+}
+
 function formatExpenseLine(expense, index) {
   const typeText = expense.type === 'INCOME' ? 'доход' : 'расход';
 
@@ -30,18 +42,35 @@ function formatExpenseLine(expense, index) {
   } | ${formatMoney(expense.amount, expense.currency)}`;
 }
 
-async function showEditExpenseList(ctx) {
+async function showEditExpenseList(ctx, offset = 0) {
   const user = await upsertTelegramUser(ctx.from);
-  const expenses = await getEditableExpenses(user.id);
+  const requestedOffset = normalizeOffset(offset);
+  const expenses = await getEditableExpenses(
+    user.id,
+    EDIT_EXPENSE_PAGE_SIZE + 1,
+    requestedOffset
+  );
+  const hasNextPage = expenses.length > EDIT_EXPENSE_PAGE_SIZE;
+  const pageExpenses = expenses.slice(0, EDIT_EXPENSE_PAGE_SIZE);
 
-  if (expenses.length === 0) {
-    await showMainMenu(ctx, 'Редактировать пока нечего: последних операций нет.');
+  if (pageExpenses.length === 0) {
+    await showMainMenu(
+      ctx,
+      requestedOffset > 0
+        ? 'Больше операций для редактирования пока нет.'
+        : 'Редактировать пока нечего: последних операций нет.'
+    );
     return;
   }
 
   await ctx.reply(
-    `Выберите операцию для редактирования:\n\n${expenses.map(formatExpenseLine).join('\n')}`,
-    editExpenseListKeyboard(expenses)
+    `Выберите операцию для редактирования:\n\n${pageExpenses
+      .map((expense, index) => formatExpenseLine(expense, requestedOffset + index))
+      .join('\n')}`,
+    editExpenseListKeyboard(pageExpenses, {
+      nextOffset: hasNextPage ? requestedOffset + EDIT_EXPENSE_PAGE_SIZE : null,
+      startIndex: requestedOffset,
+    })
   );
 }
 
@@ -75,6 +104,11 @@ function registerEditExpenseHandlers(bot) {
   bot.action(actions.EDIT_EXPENSE, async (ctx) => {
     await ctx.answerCbQuery();
     await showEditExpenseList(ctx);
+  });
+
+  bot.action(/^EDIT_EXPENSE_NEXT:(\d+)$/u, async (ctx) => {
+    await ctx.answerCbQuery();
+    await showEditExpenseList(ctx, ctx.match[1]);
   });
 
   bot.action(/^EDIT_EXPENSE_SELECT:(.+)$/u, async (ctx) => {

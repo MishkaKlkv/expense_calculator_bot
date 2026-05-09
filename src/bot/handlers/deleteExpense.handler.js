@@ -15,6 +15,18 @@ const { formatDateTime } = require('../../utils/date');
 const { formatMoney } = require('../../utils/money');
 const { showMainMenu } = require('./menu.handler');
 
+const DELETE_EXPENSE_PAGE_SIZE = 10;
+
+function normalizeOffset(value) {
+  const offset = Number(value);
+
+  if (!Number.isInteger(offset) || offset < 0) {
+    return 0;
+  }
+
+  return offset;
+}
+
 function formatExpenseLine(expense, index) {
   const typeText = expense.type === 'INCOME' ? 'доход' : 'расход';
 
@@ -23,23 +35,40 @@ function formatExpenseLine(expense, index) {
   } | ${formatMoney(expense.amount, expense.currency)}`;
 }
 
-async function showDeleteExpenseList(ctx) {
+async function showDeleteExpenseList(ctx, offset = 0) {
   const user = await upsertTelegramUser(ctx.from);
-  const expenses = await getDeletableExpenses(user.id);
+  const requestedOffset = normalizeOffset(offset);
+  const expenses = await getDeletableExpenses(
+    user.id,
+    DELETE_EXPENSE_PAGE_SIZE + 1,
+    requestedOffset
+  );
+  const hasNextPage = expenses.length > DELETE_EXPENSE_PAGE_SIZE;
+  const pageExpenses = expenses.slice(0, DELETE_EXPENSE_PAGE_SIZE);
 
-  if (expenses.length === 0) {
-    await showMainMenu(ctx, 'Удалять пока нечего: последних операций нет.');
+  if (pageExpenses.length === 0) {
+    await showMainMenu(
+      ctx,
+      requestedOffset > 0
+        ? 'Больше операций для удаления пока нет.'
+        : 'Удалять пока нечего: последних операций нет.'
+    );
     return;
   }
 
-  const lines = expenses.map(formatExpenseLine);
+  const lines = pageExpenses.map((expense, index) =>
+    formatExpenseLine(expense, requestedOffset + index)
+  );
 
   await setDialogState(user.id, 'DELETE_TRANSACTION_CONFIRMATION', {
-    expenseIds: expenses.map((expense) => expense.id),
+    expenseIds: pageExpenses.map((expense) => expense.id),
   });
   await ctx.reply(
     `Выберите операцию для удаления:\n\n${lines.join('\n')}`,
-    deleteExpenseListKeyboard(expenses)
+    deleteExpenseListKeyboard(pageExpenses, {
+      nextOffset: hasNextPage ? requestedOffset + DELETE_EXPENSE_PAGE_SIZE : null,
+      startIndex: requestedOffset,
+    })
   );
 }
 
@@ -50,6 +79,11 @@ function registerDeleteExpenseHandlers(bot) {
   bot.action(actions.DELETE_EXPENSE, async (ctx) => {
     await ctx.answerCbQuery();
     await showDeleteExpenseList(ctx);
+  });
+
+  bot.action(/^DELETE_EXPENSE_NEXT:(\d+)$/u, async (ctx) => {
+    await ctx.answerCbQuery();
+    await showDeleteExpenseList(ctx, ctx.match[1]);
   });
 
   bot.action(/^DELETE_EXPENSE_SELECT:(.+)$/u, async (ctx) => {

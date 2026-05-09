@@ -62,7 +62,7 @@ async function searchExpenses({ userId, query, limit = 10 }) {
   });
 }
 
-async function findRecentTransactions({ userId, limit = 10 }) {
+async function findRecentTransactions({ userId, limit = 10, offset = 0 }) {
   return prisma.expense.findMany({
     where: {
       userId,
@@ -70,9 +70,8 @@ async function findRecentTransactions({ userId, limit = 10 }) {
     include: {
       user: true,
     },
-    orderBy: {
-      expenseDate: 'desc',
-    },
+    orderBy: [{ expenseDate: 'desc' }, { id: 'desc' }],
+    skip: offset,
     take: limit,
   });
 }

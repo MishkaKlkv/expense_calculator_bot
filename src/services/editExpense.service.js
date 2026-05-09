@@ -7,8 +7,8 @@ const { findUserCategoryName } = require('./category.service');
 const { learnAutoCategoryFromExpense } = require('./autoCategory.service');
 const { parseAmountWithCurrency } = require('./parser.service');
 
-async function getEditableExpenses(userId, limit = 10) {
-  return findRecentTransactions({ userId, limit });
+async function getEditableExpenses(userId, limit = 10, offset = 0) {
+  return findRecentTransactions({ userId, limit, offset });
 }
 
 async function getExpenseForEdit({ expenseId, userId }) {

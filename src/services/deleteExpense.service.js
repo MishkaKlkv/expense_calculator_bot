@@ -4,8 +4,8 @@ const {
   findTransactionByIdForUser,
 } = require('../repositories/expense.repository');
 
-async function getDeletableExpenses(userId, limit = 10) {
-  return findRecentTransactions({ userId, limit });
+async function getDeletableExpenses(userId, limit = 10, offset = 0) {
+  return findRecentTransactions({ userId, limit, offset });
 }
 
 async function getExpenseForDeletion({ expenseId, userId }) {
