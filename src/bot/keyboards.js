@@ -228,6 +228,7 @@ function editExpenseFieldKeyboard(expenseId) {
       Markup.button.callback('Описание', `EDIT_EXPENSE_FIELD:${expenseId}:description`),
     ],
     [Markup.button.callback('Сумма', `EDIT_EXPENSE_FIELD:${expenseId}:amount`)],
+    [Markup.button.callback('Удалить', `DELETE_EXPENSE_SELECT:${expenseId}`)],
     [Markup.button.callback('Отмена', actions.CANCEL)],
   ]);
 }
