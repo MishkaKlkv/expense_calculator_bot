@@ -1,5 +1,6 @@
 const fs = require('fs');
 const {
+  buildAllCategoriesChartPng,
   buildMonthChartPng,
   exportMonthExpenses,
   getFamilySpendingByUser,
@@ -224,6 +225,26 @@ async function sendMonthChart(ctx, options = {}) {
   }
 }
 
+async function sendAllCategoriesChart(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
+
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const chart = await buildAllCategoriesChartPng(reportScope.scope, {
+    title: options.family ? 'Все семейные категории за месяц' : 'Все категории за месяц',
+  });
+
+  try {
+    await ctx.replyWithPhoto({
+      source: chart.filePath,
+    });
+  } finally {
+    await cleanupTemp(chart.tempDir);
+  }
+}
+
 function registerReportHandlers(bot) {
   bot.command('today', sendTodayStats);
   bot.command('week', sendWeekStats);
@@ -237,6 +258,7 @@ function registerReportHandlers(bot) {
 
 module.exports = {
   registerReportHandlers,
+  sendAllCategoriesChart,
   sendExpensesExport,
   sendMonthChart,
   sendMonthComparison,

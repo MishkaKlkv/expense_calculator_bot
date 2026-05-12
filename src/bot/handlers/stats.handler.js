@@ -19,6 +19,7 @@ const { resetDialogState } = require('../../services/dialogState.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { getMarketRatesSnapshot } = require('../../services/marketRates.service');
 const {
+  sendAllCategoriesChart,
   sendExpensesExport,
   sendMonthChart,
   sendMonthComparison,
@@ -418,6 +419,11 @@ function registerStatsHandlers(bot) {
     await sendMonthChart(ctx);
   });
 
+  bot.action(actions.STATS_ALL_CATEGORIES_CHART, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendAllCategoriesChart(ctx);
+  });
+
   bot.action(actions.STATS_EXPORT_CSV, async (ctx) => {
     await ctx.answerCbQuery();
     await sendExpensesExport(ctx, 'csv');
@@ -451,6 +457,11 @@ function registerStatsHandlers(bot) {
   bot.action(actions.STATS_FAMILY_CHART, async (ctx) => {
     await ctx.answerCbQuery();
     await sendMonthChart(ctx, { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_ALL_CATEGORIES_CHART, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendAllCategoriesChart(ctx, { family: true });
   });
 
   bot.action(actions.STATS_FAMILY_EXPORT_CSV, async (ctx) => {

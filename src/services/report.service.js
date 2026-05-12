@@ -9,6 +9,7 @@ const {
   findExpensesInRange,
   findTopExpenses,
 } = require('../repositories/expense.repository');
+const { getUsdToRubRate } = require('./exchangeRate.service');
 const {
   formatDateTime,
   getCurrentMonthRange,
@@ -26,6 +27,7 @@ const EXPORT_COLUMNS = [
   { header: 'Сумма', key: 'amount', width: 12 },
   { header: 'Валюта', key: 'currency', width: 10 },
 ];
+const ALL_CATEGORIES_BAR_COLORS = ['#2f80ed', '#27ae60', '#f2994a', '#eb5757', '#9b51e0'];
 
 function normalizeUserScope(scope) {
   if (typeof scope === 'object' && scope !== null) {
@@ -177,6 +179,67 @@ function formatChartPercent(value) {
   }).format(value)}%`;
 }
 
+function truncateChartText(value, maxLength = 26) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1)}…`;
+}
+
+async function buildRubCategoryRows(rows) {
+  const hasUsd = rows.some((row) => row.currency === 'USD');
+  let usdRate = null;
+  let skippedCurrency = false;
+
+  if (hasUsd) {
+    try {
+      usdRate = await getUsdToRubRate();
+    } catch (error) {
+      console.error('[report:all-categories-chart] failed to fetch USD rate', error);
+      skippedCurrency = true;
+    }
+  }
+
+  const totals = new Map();
+
+  rows.forEach((row) => {
+    const amount = getNetAmount(row);
+    let rubAmount = amount;
+
+    if (row.currency === 'USD') {
+      if (!usdRate) {
+        return;
+      }
+
+      rubAmount = amount * usdRate.value;
+    } else if (row.currency !== 'RUB') {
+      skippedCurrency = true;
+      return;
+    }
+
+    totals.set(row.category, (totals.get(row.category) || 0) + rubAmount);
+  });
+
+  const chartRows = Array.from(totals.entries())
+    .map(([category, value]) => ({ category, value }))
+    .filter((row) => row.value > 0)
+    .sort((left, right) => right.value - left.value);
+  const notes = [];
+
+  if (usdRate) {
+    notes.push(
+      `USD пересчитан по курсу ${formatChartAmount(usdRate.value)}${usdRate.date ? ` (${usdRate.date}, ${usdRate.source})` : ''}`
+    );
+  } else if (skippedCurrency || hasUsd) {
+    notes.push('Часть валютных расходов не учтена: не удалось получить курс USD.');
+  }
+
+  return { chartRows, notes };
+}
+
 function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
   const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
 
@@ -197,6 +260,62 @@ function describePieSlice({ centerX, centerY, radius, startAngle, endAngle }) {
     `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`,
     'Z',
   ].join(' ');
+}
+
+function buildAllCategoriesChartSvgContent(rows, options = {}) {
+  const { notes = [], title = 'Все категории за месяц' } = options;
+  const width = 1100;
+  const rowHeight = 56;
+  const topOffset = 160;
+  const bottomOffset = notes.length > 0 ? 92 : 48;
+  const height = Math.max(520, topOffset + rows.length * rowHeight + bottomOffset);
+  const labelX = 60;
+  const barX = 330;
+  const barMaxWidth = 490;
+  const amountX = 850;
+  const maxValue = rows.length > 0 ? Math.max(...rows.map((row) => row.value)) : 0;
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+
+  if (rows.length === 0) {
+    return [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
+      '<rect width="100%" height="100%" fill="#ffffff" />',
+      `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
+      '<text x="60" y="140" font-size="24" fill="#555">Нет расходов за текущий месяц</text>',
+      '</svg>',
+    ].join('\n');
+  }
+
+  const rowElements = rows
+    .map((row, index) => {
+      const y = topOffset + index * rowHeight;
+      const barWidth = Math.max(6, (row.value / maxValue) * barMaxWidth);
+      const percent = total > 0 ? (row.value / total) * 100 : 0;
+      const color = ALL_CATEGORIES_BAR_COLORS[index % ALL_CATEGORIES_BAR_COLORS.length];
+
+      return [
+        `<text x="${labelX}" y="${y + 24}" font-size="22" font-weight="700" fill="#111">${escapeXml(truncateChartText(row.category))}</text>`,
+        `<rect x="${barX}" y="${y + 2}" width="${barWidth.toFixed(1)}" height="28" rx="6" fill="${color}" />`,
+        `<text x="${amountX}" y="${y + 24}" font-size="21" fill="#111">${escapeXml(formatChartAmount(row.value))} · ${formatChartPercent(percent)}</text>`,
+      ].join('\n');
+    })
+    .join('\n');
+  const noteElements = notes
+    .map((note, index) => {
+      return `<text x="60" y="${height - 42 + index * 26}" font-size="18" fill="#666">${escapeXml(note)}</text>`;
+    })
+    .join('\n');
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
+    '<rect width="100%" height="100%" fill="#ffffff" />',
+    `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
+    '<text x="60" y="122" font-size="21" fill="#555">Все категории, RUB</text>',
+    rowElements,
+    `<text x="60" y="${height - 16}" font-size="21" font-weight="700" fill="#111">Итого: ${escapeXml(formatChartAmount(total))}</text>`,
+    noteElements,
+    '</svg>',
+  ].join('\n');
 }
 
 function groupChartRows(rows) {
@@ -312,7 +431,26 @@ async function buildMonthChartPng(scope, options = {}) {
   return { filePath, tempDir };
 }
 
+async function buildAllCategoriesChartPng(scope, options = {}) {
+  const rows = await getCategoryStatsForRange({
+    ...normalizeUserScope(scope),
+    range: getCurrentMonthRange(),
+  });
+  const { chartRows, notes } = await buildRubCategoryRows(rows);
+  const svg = buildAllCategoriesChartSvgContent(chartRows, {
+    notes,
+    title: options.title,
+  });
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'expense-all-categories-'));
+  const filePath = path.join(tempDir, `all-categories-${Date.now()}.png`);
+
+  await sharp(Buffer.from(svg)).png().toFile(filePath);
+
+  return { filePath, tempDir };
+}
+
 module.exports = {
+  buildAllCategoriesChartPng,
   buildMonthChartPng,
   exportMonthExpenses,
   getFamilySpendingByUser,
