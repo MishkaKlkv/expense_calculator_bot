@@ -6,8 +6,13 @@ const {
   findCategories,
   findCategoriesForUsers,
   findCategoryByName,
+  updateCategoryNameByNameForUsers,
 } = require('../repositories/category.repository');
+const { updateTransactionCategoryByNameForUsers } = require('../repositories/expense.repository');
 const { getFamilyForUser } = require('../repositories/family.repository');
+const {
+  updatePlannedPaymentCategoryByNameForUsers,
+} = require('../repositories/plannedPayment.repository');
 const { EXPENSE_CATEGORIES, INCOME_CATEGORIES } = require('../constants/categories');
 
 const CATEGORY_TYPES = ['EXPENSE', 'INCOME'];
@@ -244,6 +249,82 @@ async function deleteUserCategory({ userId, type, name }) {
   return { ok: result.count > 0, count: result.count };
 }
 
+async function renameUserCategory({ userId, type, oldName, newName }) {
+  const categoryType = normalizeCategoryType(type);
+  const currentName = normalizeCategoryName(oldName);
+  const nextName = normalizeCategoryName(newName);
+
+  if (!categoryType) {
+    return { ok: false, reason: 'UNKNOWN_TYPE' };
+  }
+
+  if (!currentName || !nextName) {
+    return { ok: false, reason: 'EMPTY_NAME' };
+  }
+
+  if (currentName.toLowerCase() === nextName.toLowerCase()) {
+    return { ok: false, reason: 'SAME_NAME' };
+  }
+
+  await ensureDefaultCategories(userId);
+  const userIds = await ensureFamilyCategories(userId);
+  const existing = await findCategoryByName({
+    userId,
+    type: categoryType,
+    name: currentName,
+  });
+
+  if (!existing) {
+    return { ok: false, reason: 'NOT_FOUND' };
+  }
+
+  const duplicate = await findCategoryByName({
+    userId,
+    type: categoryType,
+    name: nextName,
+  });
+
+  if (duplicate) {
+    return { ok: false, reason: 'ALREADY_EXISTS' };
+  }
+
+  const [categories, transactions, plannedPayments] = await Promise.all([
+    updateCategoryNameByNameForUsers({
+      userIds,
+      type: categoryType,
+      oldName: currentName,
+      newName: nextName,
+    }),
+    updateTransactionCategoryByNameForUsers({
+      userIds,
+      type: categoryType,
+      oldName: currentName,
+      newName: nextName,
+    }),
+    categoryType === 'EXPENSE'
+      ? updatePlannedPaymentCategoryByNameForUsers({
+          userIds,
+          oldName: currentName,
+          newName: nextName,
+        })
+      : Promise.resolve({ count: 0 }),
+  ]);
+
+  return {
+    ok: categories.count > 0,
+    category: {
+      type: categoryType,
+      oldName: existing.name,
+      name: nextName,
+    },
+    counts: {
+      categories: categories.count,
+      plannedPayments: plannedPayments.count,
+      transactions: transactions.count,
+    },
+  };
+}
+
 module.exports = {
   addUserCategory,
   deleteUserCategory,
@@ -252,5 +333,6 @@ module.exports = {
   getUserCategoryNames,
   getUserCategories,
   normalizeCategoryType,
+  renameUserCategory,
   syncFamilyCategoriesForUser: ensureFamilyCategories,
 };

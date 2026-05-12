@@ -210,6 +210,24 @@ async function deleteExpensesForUser({ userId, start, end }) {
   });
 }
 
+async function updateTransactionCategoryByNameForUsers({ userIds, type, oldName, newName }) {
+  return prisma.expense.updateMany({
+    where: {
+      userId: {
+        in: userIds,
+      },
+      type,
+      category: {
+        equals: oldName,
+        mode: 'insensitive',
+      },
+    },
+    data: {
+      category: newName,
+    },
+  });
+}
+
 async function aggregateExpensesByCategory({ userId, userIds, start, end }) {
   return aggregateTransactionsByCategory({ userId, userIds, start, end, type: 'EXPENSE' });
 }
@@ -274,5 +292,6 @@ module.exports = {
   findTransactionByIdForUser,
   searchExpenses,
   updateExpenseByIdForUser,
+  updateTransactionCategoryByNameForUsers,
   updateTransactionByIdForUser,
 };

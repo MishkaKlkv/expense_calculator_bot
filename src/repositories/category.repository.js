@@ -79,6 +79,24 @@ async function deleteCategoryByNameForUsers({ userIds, type, name }) {
   });
 }
 
+async function updateCategoryNameByNameForUsers({ userIds, type, oldName, newName }) {
+  return prisma.userCategory.updateMany({
+    where: {
+      userId: {
+        in: userIds,
+      },
+      type,
+      name: {
+        equals: oldName,
+        mode: 'insensitive',
+      },
+    },
+    data: {
+      name: newName,
+    },
+  });
+}
+
 module.exports = {
   createCategory,
   createManyCategories,
@@ -87,4 +105,5 @@ module.exports = {
   findCategories,
   findCategoriesForUsers,
   findCategoryByName,
+  updateCategoryNameByNameForUsers,
 };

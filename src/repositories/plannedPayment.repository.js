@@ -63,6 +63,23 @@ async function updatePlannedPaymentByIdForUser({ id, userId, data }) {
   });
 }
 
+async function updatePlannedPaymentCategoryByNameForUsers({ userIds, oldName, newName }) {
+  return prisma.plannedPayment.updateMany({
+    where: {
+      userId: {
+        in: userIds,
+      },
+      category: {
+        equals: oldName,
+        mode: 'insensitive',
+      },
+    },
+    data: {
+      category: newName,
+    },
+  });
+}
+
 async function markPlannedPaymentReminderSent({ id, sentMonth }) {
   return prisma.plannedPayment.update({
     where: {
@@ -91,5 +108,6 @@ module.exports = {
   findPlannedPayments,
   findReminderEnabledPlannedPayments,
   markPlannedPaymentReminderSent,
+  updatePlannedPaymentCategoryByNameForUsers,
   updatePlannedPaymentByIdForUser,
 };

@@ -10,7 +10,7 @@ const botCommands = [
   { command: 'accounts', description: 'Счета и накопления' },
   { command: 'planned', description: 'Платежи и напоминания' },
   { command: 'reminder', description: 'Настроить напоминание' },
-  { command: 'categories', description: 'Добавить/удалить категории' },
+  { command: 'categories', description: 'Настроить категории' },
   { command: 'family', description: 'Семейный счет и участники' },
   { command: 'profile', description: 'Уровень, XP и достижения' },
   { command: 'streak', description: 'Серия учета' },

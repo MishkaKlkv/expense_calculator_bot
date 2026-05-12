@@ -1,10 +1,16 @@
-const { actions, categoriesManageKeyboard, categoryTypeKeyboard } = require('../keyboards');
+const {
+  actions,
+  categoriesManageKeyboard,
+  categoryNamesKeyboard,
+  categoryTypeKeyboard,
+} = require('../keyboards');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   addUserCategory,
   deleteUserCategory,
   getUserCategoryNames,
   normalizeCategoryType,
+  renameUserCategory,
 } = require('../../services/category.service');
 const {
   getDialogState,
@@ -54,6 +60,8 @@ function getCategoryErrorText(reason) {
     EMPTY_NAME: 'Название категории не должно быть пустым.',
     UNKNOWN_TYPE: 'Укажите тип: расход или доход.',
     LAST_CATEGORY: 'Нельзя удалить последнюю категорию этого типа.',
+    NOT_FOUND: 'Категория не найдена.',
+    SAME_NAME: 'Новое название совпадает со старым.',
   };
 
   return errors[reason] || 'Не получилось изменить категории.';
@@ -73,11 +81,20 @@ async function startCategoryDelete(ctx) {
   await ctx.reply('Какую категорию удалить?', categoryTypeKeyboard('CATEGORY_DELETE_TYPE'));
 }
 
+async function startCategoryRename(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+
+  await setDialogState(user.id, 'CATEGORY_RENAME_WAITING_FOR_TYPE');
+  await ctx.reply('Какую категорию переименовать?', categoryTypeKeyboard('CATEGORY_RENAME_TYPE'));
+}
+
 async function saveCategoryAdd(ctx, user, type, name) {
   const result = await addUserCategory({ userId: user.id, type: type || '', name });
 
   if (!result.ok) {
-    await ctx.reply(`${getCategoryErrorText(result.reason)} Напишите другое название или отмените: /cancel`);
+    await ctx.reply(
+      `${getCategoryErrorText(result.reason)} Напишите другое название или отмените: /cancel`
+    );
     return;
   }
 
@@ -107,6 +124,27 @@ async function saveCategoryDelete(ctx, user, type, name) {
   await ctx.reply('Категория удалена.');
 }
 
+async function saveCategoryRename(ctx, user, type, oldName, newName) {
+  const result = await renameUserCategory({
+    userId: user.id,
+    type: type || '',
+    oldName: oldName || '',
+    newName,
+  });
+
+  if (!result.ok) {
+    await ctx.reply(
+      `${getCategoryErrorText(result.reason)} Напишите другое название или отмените: /cancel`
+    );
+    return;
+  }
+
+  await resetDialogState(user.id);
+  await ctx.reply(
+    `Категория переименована: ${result.category.oldName} → ${result.category.name}.`
+  );
+}
+
 async function handleCategoryDialog(ctx, user, dialogState) {
   const text = ctx.message.text.trim();
 
@@ -120,6 +158,11 @@ async function handleCategoryDialog(ctx, user, dialogState) {
     return true;
   }
 
+  if (dialogState.state === 'CATEGORY_RENAME_WAITING_FOR_TYPE') {
+    await ctx.reply('Выберите тип категории кнопкой или отмените действие: /cancel');
+    return true;
+  }
+
   if (dialogState.state === 'CATEGORY_ADD_WAITING_FOR_NAME') {
     await saveCategoryAdd(ctx, user, dialogState.payload?.type, text);
     return true;
@@ -127,6 +170,41 @@ async function handleCategoryDialog(ctx, user, dialogState) {
 
   if (dialogState.state === 'CATEGORY_DELETE_WAITING_FOR_NAME') {
     await saveCategoryDelete(ctx, user, dialogState.payload?.type, text);
+    return true;
+  }
+
+  if (dialogState.state === 'CATEGORY_RENAME_WAITING_FOR_OLD_NAME') {
+    const category = await getUserCategoryNames({
+      userId: user.id,
+      type: dialogState.payload?.type,
+    }).then((categories) => {
+      const normalized = text.toLowerCase();
+      return categories.find((item) => item.toLowerCase() === normalized);
+    });
+
+    if (!category) {
+      await ctx.reply(
+        'Категория не найдена. Выберите категорию кнопкой или напишите название еще раз.'
+      );
+      return true;
+    }
+
+    await setDialogState(user.id, 'CATEGORY_RENAME_WAITING_FOR_NEW_NAME', {
+      oldName: category,
+      type: dialogState.payload?.type,
+    });
+    await ctx.reply(`Новое название для категории "${category}"?\nОтмена: /cancel`);
+    return true;
+  }
+
+  if (dialogState.state === 'CATEGORY_RENAME_WAITING_FOR_NEW_NAME') {
+    await saveCategoryRename(
+      ctx,
+      user,
+      dialogState.payload?.type,
+      dialogState.payload?.oldName,
+      text
+    );
     return true;
   }
 
@@ -222,6 +300,11 @@ function registerCategoryHandlers(bot) {
     );
   });
 
+  bot.action(actions.CATEGORY_RENAME_HELP, async (ctx) => {
+    await ctx.answerCbQuery();
+    await startCategoryRename(ctx);
+  });
+
   bot.action(/^CATEGORY_ADD_TYPE:(EXPENSE|INCOME)$/u, async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
     const type = ctx.match[1];
@@ -245,6 +328,42 @@ function registerCategoryHandlers(bot) {
     await ctx.reply(
       `Какую категорию ${getTypeLabel(type)} удалить?\n\n${categories.join(', ')}\n\nОтмена: /cancel`
     );
+  });
+
+  bot.action(/^CATEGORY_RENAME_TYPE:(EXPENSE|INCOME)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const type = ctx.match[1];
+    const categories = await getUserCategoryNames({ userId: user.id, type });
+
+    await ctx.answerCbQuery();
+    await setDialogState(user.id, 'CATEGORY_RENAME_WAITING_FOR_OLD_NAME', { type });
+    await ctx.reply(
+      `Выберите категорию ${getTypeLabel(type)}:`,
+      categoryNamesKeyboard(categories, 'CATEGORY_RENAME_NAME')
+    );
+  });
+
+  bot.action(/^CATEGORY_RENAME_NAME:(.+)$/u, async (ctx) => {
+    const user = await upsertTelegramUser(ctx.from);
+    const dialogState = await getDialogState(user.id);
+    const oldName = ctx.match[1];
+
+    await ctx.answerCbQuery();
+
+    if (dialogState.state !== 'CATEGORY_RENAME_WAITING_FOR_OLD_NAME') {
+      await setDialogState(user.id, 'CATEGORY_RENAME_WAITING_FOR_TYPE');
+      await ctx.reply(
+        'Начнем заново. Какую категорию переименовать?',
+        categoryTypeKeyboard('CATEGORY_RENAME_TYPE')
+      );
+      return;
+    }
+
+    await setDialogState(user.id, 'CATEGORY_RENAME_WAITING_FOR_NEW_NAME', {
+      oldName,
+      type: dialogState.payload?.type,
+    });
+    await ctx.reply(`Новое название для категории "${oldName}"?\nОтмена: /cancel`);
   });
 
   bot.on('text', async (ctx, next) => {

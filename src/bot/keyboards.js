@@ -46,6 +46,7 @@ const actions = {
   CATEGORY_ADD_INCOME_HELP: 'CATEGORY_ADD_INCOME_HELP',
   CATEGORY_DELETE_EXPENSE_HELP: 'CATEGORY_DELETE_EXPENSE_HELP',
   CATEGORY_DELETE_INCOME_HELP: 'CATEGORY_DELETE_INCOME_HELP',
+  CATEGORY_RENAME_HELP: 'CATEGORY_RENAME_HELP',
   PLANNED_ADD_HELP: 'PLANNED_ADD_HELP',
   PLANNED_DELETE_HELP: 'PLANNED_DELETE_HELP',
   PLANNED_REMINDER_ON_HELP: 'PLANNED_REMINDER_ON_HELP',
@@ -397,6 +398,7 @@ function categoriesManageKeyboard() {
       Markup.button.callback('Удалить расход', actions.CATEGORY_DELETE_EXPENSE_HELP),
       Markup.button.callback('Удалить доход', actions.CATEGORY_DELETE_INCOME_HELP),
     ],
+    [Markup.button.callback('Переименовать', actions.CATEGORY_RENAME_HELP)],
   ]);
 }
 
