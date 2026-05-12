@@ -76,8 +76,8 @@ async function findRecentTransactions({ userId, limit = 10, offset = 0 }) {
   });
 }
 
-async function findExpensesInRange({ userId, userIds, start, end }) {
-  return prisma.expense.findMany({
+async function findExpensesInRange({ userId, userIds, start, end, category, limit, offset = 0 }) {
+  const query = {
     where: {
       userId: buildUserWhere({ userId, userIds }),
       type: 'EXPENSE',
@@ -85,14 +85,20 @@ async function findExpensesInRange({ userId, userIds, start, end }) {
         gte: start,
         lt: end,
       },
+      ...(category ? { category } : {}),
     },
     include: {
       user: true,
     },
-    orderBy: {
-      expenseDate: 'desc',
-    },
-  });
+    orderBy: [{ expenseDate: 'desc' }, { id: 'desc' }],
+  };
+
+  if (typeof limit === 'number') {
+    query.skip = offset;
+    query.take = limit;
+  }
+
+  return prisma.expense.findMany(query);
 }
 
 async function countExpensesInRange({ userId, start, end }) {

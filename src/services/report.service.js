@@ -28,6 +28,7 @@ const EXPORT_COLUMNS = [
   { header: 'Валюта', key: 'currency', width: 10 },
 ];
 const ALL_CATEGORIES_BAR_COLORS = ['#2f80ed', '#27ae60', '#f2994a', '#eb5757', '#9b51e0'];
+const CATEGORY_EXPENSES_PAGE_SIZE = 10;
 
 function normalizeUserScope(scope) {
   if (typeof scope === 'object' && scope !== null) {
@@ -101,6 +102,31 @@ async function getMonthComparison(scope) {
 async function getTopMonthExpenses(scope, limit = 5) {
   const range = getCurrentMonthRange();
   return findTopExpenses({ ...normalizeUserScope(scope), start: range.start, end: range.end, limit });
+}
+
+async function getCurrentMonthExpenseCategories(scope) {
+  const rows = await getCategoryStatsForRange({
+    ...normalizeUserScope(scope),
+    range: getCurrentMonthRange(),
+  });
+  const categories = Array.from(new Set(rows.map((row) => row.category)));
+
+  return categories.sort((left, right) => left.localeCompare(right, 'ru'));
+}
+
+async function getCurrentMonthExpensesByCategory(scope, category, options = {}) {
+  const range = getCurrentMonthRange();
+  const limit = options.limit || CATEGORY_EXPENSES_PAGE_SIZE;
+  const offset = options.offset || 0;
+
+  return findExpensesInRange({
+    ...normalizeUserScope(scope),
+    start: range.start,
+    end: range.end,
+    category,
+    limit,
+    offset,
+  });
 }
 
 async function getFamilySpendingByUser({ userIds, start, end }) {
@@ -240,28 +266,6 @@ async function buildRubCategoryRows(rows) {
   return { chartRows, notes };
 }
 
-function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
-  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
-
-  return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
-  };
-}
-
-function describePieSlice({ centerX, centerY, radius, startAngle, endAngle }) {
-  const start = polarToCartesian(centerX, centerY, radius, endAngle);
-  const end = polarToCartesian(centerX, centerY, radius, startAngle);
-  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
-
-  return [
-    `M ${centerX} ${centerY}`,
-    `L ${start.x.toFixed(2)} ${start.y.toFixed(2)}`,
-    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`,
-    'Z',
-  ].join(' ');
-}
-
 function buildAllCategoriesChartSvgContent(rows, options = {}) {
   const { notes = [], title = 'Все категории за месяц' } = options;
   const width = 1100;
@@ -318,120 +322,7 @@ function buildAllCategoriesChartSvgContent(rows, options = {}) {
   ].join('\n');
 }
 
-function groupChartRows(rows) {
-  const visibleRows = rows.slice(0, 7);
-  const otherRows = rows.slice(7);
-  const otherValue = otherRows.reduce((sum, row) => sum + row.value, 0);
-
-  if (otherValue <= 0) {
-    return visibleRows;
-  }
-
-  return [...visibleRows, { category: 'Другое', value: otherValue }];
-}
-
-function buildMonthChartSvgContent(rows, options = {}) {
-  const { title = 'Расходы за месяц' } = options;
-  const chartRows = groupChartRows(rows);
-  const total = chartRows.reduce((sum, row) => sum + row.value, 0);
-  const colors = [
-    '#2f80ed',
-    '#27ae60',
-    '#f2994a',
-    '#eb5757',
-    '#9b51e0',
-    '#00a6a6',
-    '#f2c94c',
-    '#6fcf97',
-  ];
-  const width = 1100;
-  const height = 720;
-  const centerX = 330;
-  const centerY = 380;
-  const radius = 230;
-
-  if (chartRows.length === 0) {
-    return [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
-      '<rect width="100%" height="100%" fill="#ffffff" />',
-      `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
-      '<text x="60" y="140" font-size="24" fill="#555">Нет расходов в RUB за текущий месяц</text>',
-      '</svg>',
-    ].join('\n');
-  }
-
-  let currentAngle = 0;
-  const slices = chartRows
-    .map((row, index) => {
-      const sliceAngle = (row.value / total) * 360;
-      const startAngle = currentAngle;
-      const endAngle = index === chartRows.length - 1 ? 360 : currentAngle + sliceAngle;
-      currentAngle = endAngle;
-
-      if (chartRows.length === 1) {
-        return `<circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="${colors[index]}" />`;
-      }
-
-      return `<path d="${describePieSlice({
-        centerX,
-        centerY,
-        endAngle,
-        radius,
-        startAngle,
-      })}" fill="${colors[index]}" stroke="#ffffff" stroke-width="4" />`;
-    })
-    .join('\n');
-
-  const legend = chartRows
-    .map((row, index) => {
-      const y = 190 + index * 58;
-      const percent = (row.value / total) * 100;
-
-      return [
-        `<rect x="650" y="${y - 22}" width="28" height="28" rx="6" fill="${colors[index]}" />`,
-        `<text x="696" y="${y}" font-size="24" font-weight="700" fill="#111">${escapeXml(row.category)}</text>`,
-        `<text x="696" y="${y + 30}" font-size="20" fill="#555">${escapeXml(formatChartAmount(row.value))} · ${formatChartPercent(percent)}</text>`,
-      ].join('\n');
-    })
-    .join('\n');
-
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
-    '<rect width="100%" height="100%" fill="#ffffff" />',
-    `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
-    '<text x="60" y="122" font-size="21" fill="#555">По категориям, RUB</text>',
-    slices,
-    `<circle cx="${centerX}" cy="${centerY}" r="96" fill="#ffffff" />`,
-    `<text x="${centerX}" y="${centerY - 8}" font-size="24" text-anchor="middle" fill="#555">Итого</text>`,
-    `<text x="${centerX}" y="${centerY + 34}" font-size="30" font-weight="700" text-anchor="middle" fill="#111">${escapeXml(formatChartAmount(total))}</text>`,
-    legend,
-    '</svg>',
-  ].join('\n');
-}
-
 async function buildMonthChartPng(scope, options = {}) {
-  const rows = await getCategoryStatsForRange({
-    ...normalizeUserScope(scope),
-    range: getCurrentMonthRange(),
-  });
-  const rubRows = rows
-    .filter((row) => row.currency === 'RUB')
-    .map((row) => ({
-      category: row.category,
-      value: getNetAmount(row),
-    }))
-    .filter((row) => row.value > 0)
-    .sort((a, b) => b.value - a.value);
-  const svg = buildMonthChartSvgContent(rubRows, options);
-  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'expense-chart-'));
-  const filePath = path.join(tempDir, `chart-${Date.now()}.png`);
-
-  await sharp(Buffer.from(svg)).png().toFile(filePath);
-
-  return { filePath, tempDir };
-}
-
-async function buildAllCategoriesChartPng(scope, options = {}) {
   const rows = await getCategoryStatsForRange({
     ...normalizeUserScope(scope),
     range: getCurrentMonthRange(),
@@ -450,9 +341,11 @@ async function buildAllCategoriesChartPng(scope, options = {}) {
 }
 
 module.exports = {
-  buildAllCategoriesChartPng,
+  CATEGORY_EXPENSES_PAGE_SIZE,
   buildMonthChartPng,
   exportMonthExpenses,
+  getCurrentMonthExpenseCategories,
+  getCurrentMonthExpensesByCategory,
   getFamilySpendingByUser,
   getMonthComparison,
   getTodayStats,

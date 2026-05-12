@@ -10,7 +10,8 @@ const actions = {
   STATS_COMPARE: 'STATS_COMPARE',
   STATS_TOP: 'STATS_TOP',
   STATS_CHART: 'STATS_CHART',
-  STATS_ALL_CATEGORIES_CHART: 'STATS_ALL_CATEGORIES_CHART',
+  STATS_CATEGORY_EXPENSES: 'STATS_CATEGORY_EXPENSES',
+  STATS_CATEGORY_EXPENSES_NEXT: 'STATS_CATEGORY_EXPENSES_NEXT',
   STATS_EXPORT_CSV: 'STATS_EXPORT_CSV',
   STATS_EXPORT_XLSX: 'STATS_EXPORT_XLSX',
   STATS_FAMILY_MONTH: 'STATS_FAMILY_MONTH',
@@ -20,7 +21,8 @@ const actions = {
   STATS_FAMILY_COMPARE: 'STATS_FAMILY_COMPARE',
   STATS_FAMILY_TOP: 'STATS_FAMILY_TOP',
   STATS_FAMILY_CHART: 'STATS_FAMILY_CHART',
-  STATS_FAMILY_ALL_CATEGORIES_CHART: 'STATS_FAMILY_ALL_CATEGORIES_CHART',
+  STATS_FAMILY_CATEGORY_EXPENSES: 'STATS_FAMILY_CATEGORY_EXPENSES',
+  STATS_FAMILY_CATEGORY_EXPENSES_NEXT: 'STATS_FAMILY_CATEGORY_EXPENSES_NEXT',
   STATS_FAMILY_EXPORT_CSV: 'STATS_FAMILY_EXPORT_CSV',
   STATS_FAMILY_EXPORT_XLSX: 'STATS_FAMILY_EXPORT_XLSX',
   RECENT_EXPENSES: 'RECENT_EXPENSES',
@@ -440,6 +442,16 @@ function recentExpensesKeyboard(nextOffset, options = {}) {
   ]);
 }
 
+function categoryExpensesNextKeyboard(nextOffset, category, options = {}) {
+  const action = options.family
+    ? actions.STATS_FAMILY_CATEGORY_EXPENSES_NEXT
+    : actions.STATS_CATEGORY_EXPENSES_NEXT;
+
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('Следующие 10', `${action}:${nextOffset}:${category}`)],
+  ]);
+}
+
 function statsManageKeyboard() {
   return Markup.inlineKeyboard([
     [Markup.button.callback('Семейная статистика', actions.STATS_FAMILY_MONTH)],
@@ -455,7 +467,7 @@ function statsManageKeyboard() {
       Markup.button.callback('Топ трат', actions.STATS_TOP),
       Markup.button.callback('График расходов', actions.STATS_CHART),
     ],
-    [Markup.button.callback('Все категории', actions.STATS_ALL_CATEGORIES_CHART)],
+    [Markup.button.callback('Траты по категории', actions.STATS_CATEGORY_EXPENSES)],
     [
       Markup.button.callback('CSV', actions.STATS_EXPORT_CSV),
       Markup.button.callback('XLSX', actions.STATS_EXPORT_XLSX),
@@ -478,7 +490,7 @@ function familyStatsManageKeyboard() {
       Markup.button.callback('Топ трат', actions.STATS_FAMILY_TOP),
       Markup.button.callback('График расходов', actions.STATS_FAMILY_CHART),
     ],
-    [Markup.button.callback('Все категории', actions.STATS_FAMILY_ALL_CATEGORIES_CHART)],
+    [Markup.button.callback('Траты по категории', actions.STATS_FAMILY_CATEGORY_EXPENSES)],
     [
       Markup.button.callback('CSV', actions.STATS_FAMILY_EXPORT_CSV),
       Markup.button.callback('XLSX', actions.STATS_FAMILY_EXPORT_XLSX),
@@ -494,6 +506,7 @@ module.exports = {
   afterExpenseKeyboard,
   afterIncomeKeyboard,
   categoriesManageKeyboard,
+  categoryExpensesNextKeyboard,
   categoryTypeKeyboard,
   categoryKeyboard,
   categoryNamesKeyboard,

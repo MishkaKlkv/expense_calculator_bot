@@ -19,7 +19,8 @@ const { resetDialogState } = require('../../services/dialogState.service');
 const { getUsdToRubRate } = require('../../services/exchangeRate.service');
 const { getMarketRatesSnapshot } = require('../../services/marketRates.service');
 const {
-  sendAllCategoriesChart,
+  sendCategoryExpensePicker,
+  sendCategoryExpenses,
   sendExpensesExport,
   sendMonthChart,
   sendMonthComparison,
@@ -419,9 +420,19 @@ function registerStatsHandlers(bot) {
     await sendMonthChart(ctx);
   });
 
-  bot.action(actions.STATS_ALL_CATEGORIES_CHART, async (ctx) => {
+  bot.action(actions.STATS_CATEGORY_EXPENSES, async (ctx) => {
     await ctx.answerCbQuery();
-    await sendAllCategoriesChart(ctx);
+    await sendCategoryExpensePicker(ctx);
+  });
+
+  bot.action(new RegExp(`^${actions.STATS_CATEGORY_EXPENSES}:(.+)$`, 'u'), async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendCategoryExpenses(ctx, ctx.match[1]);
+  });
+
+  bot.action(new RegExp(`^${actions.STATS_CATEGORY_EXPENSES_NEXT}:(\\d+):(.+)$`, 'u'), async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendCategoryExpenses(ctx, ctx.match[2], ctx.match[1]);
   });
 
   bot.action(actions.STATS_EXPORT_CSV, async (ctx) => {
@@ -459,10 +470,23 @@ function registerStatsHandlers(bot) {
     await sendMonthChart(ctx, { family: true });
   });
 
-  bot.action(actions.STATS_FAMILY_ALL_CATEGORIES_CHART, async (ctx) => {
+  bot.action(actions.STATS_FAMILY_CATEGORY_EXPENSES, async (ctx) => {
     await ctx.answerCbQuery();
-    await sendAllCategoriesChart(ctx, { family: true });
+    await sendCategoryExpensePicker(ctx, { family: true });
   });
+
+  bot.action(new RegExp(`^${actions.STATS_FAMILY_CATEGORY_EXPENSES}:(.+)$`, 'u'), async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendCategoryExpenses(ctx, ctx.match[1], 0, { family: true });
+  });
+
+  bot.action(
+    new RegExp(`^${actions.STATS_FAMILY_CATEGORY_EXPENSES_NEXT}:(\\d+):(.+)$`, 'u'),
+    async (ctx) => {
+      await ctx.answerCbQuery();
+      await sendCategoryExpenses(ctx, ctx.match[2], ctx.match[1], { family: true });
+    }
+  );
 
   bot.action(actions.STATS_FAMILY_EXPORT_CSV, async (ctx) => {
     await ctx.answerCbQuery();

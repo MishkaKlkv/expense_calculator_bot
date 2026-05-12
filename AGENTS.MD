@@ -17,6 +17,21 @@ The current Prisma model is named `Expense`, but it stores transaction-like rows
 - `src/constants/` contains categories and currency aliases.
 - `prisma/schema.prisma` and `prisma/migrations/` define the database schema.
 
+## Agent Skill Locations
+
+This repository contains project-specific skill files for AI agents:
+
+- `agents/skills/expense-bot-architecture/SKILL.md` - architecture, module boundaries, and data ownership.
+- `agents/skills/expense-bot-build-and-quality/SKILL.md` - local verification, migrations, Docker, and deployment checks.
+- `agents/skills/expense-bot-telegram-ux/SKILL.md` - Telegram UX patterns, command design, callbacks, and Russian UI text.
+
+When assigning a task to an AI agent, include the relevant skill path explicitly, for example:
+
+- `Use skill at agents/skills/expense-bot-architecture and implement <task>.`
+- `Use skill at agents/skills/expense-bot-telegram-ux and improve <flow>.`
+
+Update the relevant skill file whenever a change alters project structure, architecture, database behavior, deployment workflow, or major Telegram UX rules.
+
 ## Important Behavior
 
 - The bot stores per-user state in `DialogState`; always reset state after a flow completes or is canceled.

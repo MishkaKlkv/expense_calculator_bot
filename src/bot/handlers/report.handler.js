@@ -1,14 +1,21 @@
 const fs = require('fs');
 const {
-  buildAllCategoriesChartPng,
+  CATEGORY_EXPENSES_PAGE_SIZE,
   buildMonthChartPng,
   exportMonthExpenses,
+  getCurrentMonthExpenseCategories,
+  getCurrentMonthExpensesByCategory,
   getFamilySpendingByUser,
   getMonthComparison,
   getTodayStats,
   getTopMonthExpenses,
   getWeekStats,
 } = require('../../services/report.service');
+const {
+  actions,
+  categoryExpensesNextKeyboard,
+  categoryNamesKeyboard,
+} = require('../keyboards');
 const { getFamilyContext } = require('../../services/family.service');
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const { getCurrentMonthRange } = require('../../utils/date');
@@ -59,6 +66,27 @@ function formatTopExpenses(expenses, title = 'Топ трат месяца', opt
     return `${index + 1}. ${formatDateTime(expense.expenseDate)}${userText} | ${
       expense.category
     } | ${expense.description} | ${formatMoney(expense.amount, expense.currency)}`;
+  });
+
+  return `${title}:\n\n${lines.join('\n')}`;
+}
+
+function formatCategoryExpenses(expenses, category, offset = 0, options = {}) {
+  if (expenses.length === 0) {
+    return offset > 0
+      ? `В категории "${category}" больше нет трат за текущий месяц.`
+      : `В категории "${category}" за текущий месяц трат пока нет.`;
+  }
+
+  const title = options.family
+    ? `Семейные траты в категории "${category}" за текущий месяц`
+    : `Траты в категории "${category}" за текущий месяц`;
+  const lines = expenses.map((expense, index) => {
+    const userText = options.family ? ` | ${getDisplayName(expense.user)}` : '';
+
+    return `${offset + index + 1}. ${formatDateTime(expense.expenseDate)}${userText} | ${
+      expense.description
+    } | ${formatMoney(expense.amount, expense.currency)}`;
   });
 
   return `${title}:\n\n${lines.join('\n')}`;
@@ -165,6 +193,53 @@ async function sendTopMonthExpenses(ctx, options = {}) {
   await ctx.reply(formatTopExpenses(expenses, title, { includeUser: options.family }));
 }
 
+async function sendCategoryExpensePicker(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
+
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const categories = await getCurrentMonthExpenseCategories(reportScope.scope);
+
+  if (categories.length === 0) {
+    await ctx.reply(
+      options.family
+        ? 'В семейном счете за текущий месяц расходов пока нет.'
+        : 'За текущий месяц расходов пока нет.'
+    );
+    return;
+  }
+
+  const action = options.family
+    ? actions.STATS_FAMILY_CATEGORY_EXPENSES
+    : actions.STATS_CATEGORY_EXPENSES;
+
+  await ctx.reply('Выберите категорию:', categoryNamesKeyboard(categories, action));
+}
+
+async function sendCategoryExpenses(ctx, category, offset = 0, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
+
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const safeOffset = Number(offset) || 0;
+  const expenses = await getCurrentMonthExpensesByCategory(reportScope.scope, category, {
+    limit: CATEGORY_EXPENSES_PAGE_SIZE + 1,
+    offset: safeOffset,
+  });
+  const page = expenses.slice(0, CATEGORY_EXPENSES_PAGE_SIZE);
+  const hasNext = expenses.length > CATEGORY_EXPENSES_PAGE_SIZE;
+  const message = formatCategoryExpenses(page, category, safeOffset, options);
+  const extra = hasNext
+    ? categoryExpensesNextKeyboard(safeOffset + CATEGORY_EXPENSES_PAGE_SIZE, category, options)
+    : undefined;
+
+  await ctx.reply(message, extra);
+}
+
 async function sendFamilySpendingByUser(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   const context = await getFamilyContext(user.id);
@@ -225,26 +300,6 @@ async function sendMonthChart(ctx, options = {}) {
   }
 }
 
-async function sendAllCategoriesChart(ctx, options = {}) {
-  const reportScope = await getExpenseReportScope(ctx, options);
-
-  if (!reportScope.ok) {
-    return;
-  }
-
-  const chart = await buildAllCategoriesChartPng(reportScope.scope, {
-    title: options.family ? 'Все семейные категории за месяц' : 'Все категории за месяц',
-  });
-
-  try {
-    await ctx.replyWithPhoto({
-      source: chart.filePath,
-    });
-  } finally {
-    await cleanupTemp(chart.tempDir);
-  }
-}
-
 function registerReportHandlers(bot) {
   bot.command('today', sendTodayStats);
   bot.command('week', sendWeekStats);
@@ -258,7 +313,8 @@ function registerReportHandlers(bot) {
 
 module.exports = {
   registerReportHandlers,
-  sendAllCategoriesChart,
+  sendCategoryExpensePicker,
+  sendCategoryExpenses,
   sendExpensesExport,
   sendMonthChart,
   sendMonthComparison,
