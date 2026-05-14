@@ -1,6 +1,6 @@
 const {
   actions,
-  familyOwnerKeyboard,
+  familyInfoKeyboard,
   familyStatsManageKeyboard,
   recentExpensesKeyboard,
   replyLabels,
@@ -17,6 +17,11 @@ const {
   getCurrentMonthStatsForUsers,
   getRecentExpensesForUsers,
 } = require('../../services/stats.service');
+const {
+  getDialogState,
+  resetDialogState,
+  setDialogState,
+} = require('../../services/dialogState.service');
 const {
   formatAchievementUnlocks,
   unlockFeatureAchievement,
@@ -66,7 +71,6 @@ function formatFamilyInfo(context) {
       ? [
           '',
           'Управление для владельца:',
-          'Переименовать: /family_rename Новое название',
           'Удалить участника: кнопкой ниже',
         ]
       : [];
@@ -78,8 +82,7 @@ function formatFamilyInfo(context) {
     'Участники:',
     ...memberLines,
     '',
-    'Семейная статистика: /family_stats',
-    'Последние семейные траты: /family_recent',
+    'Действия доступны кнопками ниже.',
     ...ownerLines,
   ].join('\n');
 }
@@ -126,12 +129,53 @@ async function sendFamilyInfo(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   const context = await getFamilyContext(user.id);
 
-  if (context?.currentMember.role === 'OWNER' && context.members.length > 1) {
-    await ctx.reply(formatFamilyInfo(context), familyOwnerKeyboard(context.members, user.id));
+  if (context) {
+    await ctx.reply(formatFamilyInfo(context), familyInfoKeyboard(context, user.id));
     return;
   }
 
   await ctx.reply(formatFamilyInfo(context));
+}
+
+async function startFamilyRename(ctx) {
+  const user = await upsertTelegramUser(ctx.from);
+  const context = await getFamilyContext(user.id);
+
+  if (!context) {
+    await ctx.reply('Сначала создайте семейный счет через /family_create или присоединитесь через /family_join КОД.');
+    return;
+  }
+
+  if (context.currentMember.role !== 'OWNER') {
+    await ctx.reply('Переименовать семейный счет может только владелец.');
+    return;
+  }
+
+  await setDialogState(user.id, 'FAMILY_RENAME_WAITING_FOR_NAME');
+  await ctx.reply('Отправьте новое название семейного счета.\nОтмена: /cancel');
+}
+
+async function saveFamilyRename(ctx, user, name) {
+  const result = await renameFamily({ userId: user.id, name });
+
+  if (!result.ok && result.reason === 'EMPTY_NAME') {
+    await ctx.reply('Название не должно быть пустым. Отправьте новое название или отмените: /cancel');
+    return;
+  }
+
+  await resetDialogState(user.id);
+
+  if (!result.ok && result.reason === 'NOT_IN_FAMILY') {
+    await ctx.reply('Сначала создайте семейный счет через /family_create или присоединитесь через /family_join КОД.');
+    return;
+  }
+
+  if (!result.ok && result.reason === 'NOT_OWNER') {
+    await ctx.reply('Переименовать семейный счет может только владелец.');
+    return;
+  }
+
+  await ctx.reply(`Семейный счет переименован: ${result.family.name}`);
 }
 
 async function sendFamilyStats(ctx) {
@@ -231,6 +275,12 @@ function registerFamilyHandlers(bot) {
   bot.command('family_rename', async (ctx) => {
     const user = await upsertTelegramUser(ctx.from);
     const name = ctx.message.text.replace('/family_rename', '').trim();
+
+    if (!name) {
+      await startFamilyRename(ctx);
+      return;
+    }
+
     const result = await renameFamily({ userId: user.id, name });
 
     if (!result.ok && result.reason === 'EMPTY_NAME') {
@@ -269,6 +319,11 @@ function registerFamilyHandlers(bot) {
     await sendFamilyRecent(ctx);
   });
 
+  bot.action(actions.FAMILY_RENAME, async (ctx) => {
+    await ctx.answerCbQuery();
+    await startFamilyRename(ctx);
+  });
+
   bot.action(/^FAMILY_RECENT_NEXT:(\d+)$/u, async (ctx) => {
     await ctx.answerCbQuery();
     await sendFamilyRecent(ctx, ctx.match[1]);
@@ -303,6 +358,21 @@ function registerFamilyHandlers(bot) {
 
     await ctx.reply(`Участник удален: ${getDisplayName(result.member.user)}`);
     await sendFamilyInfo(ctx);
+  });
+
+  bot.on('text', async (ctx, next) => {
+    if (ctx.message.text.startsWith('/')) {
+      return next();
+    }
+
+    const user = await upsertTelegramUser(ctx.from);
+    const dialogState = await getDialogState(user.id);
+
+    if (dialogState.state !== 'FAMILY_RENAME_WAITING_FOR_NAME') {
+      return next();
+    }
+
+    await saveFamilyRename(ctx, user, ctx.message.text.trim());
   });
 }
 

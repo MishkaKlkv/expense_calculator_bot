@@ -162,10 +162,10 @@ function registerMenuHandlers(bot) {
   });
 
   bot.action(/^REPEAT_CATEGORY:(.+)$/u, async (ctx) => {
-    const user = await upsertTelegramUser(ctx.from);
     const category = ctx.match[1];
 
     await ctx.answerCbQuery();
+    const user = await upsertTelegramUser(ctx.from);
     await setDialogState(user.id, 'ADD_EXPENSE_WAITING_FOR_DETAILS', { category });
     await ctx.replyTemporary(
       `Категория: ${category}\nОтправьте покупку в формате: овощи 500 или coffee 10 usd\nОтмена: /cancel`

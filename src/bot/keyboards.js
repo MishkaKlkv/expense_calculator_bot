@@ -35,6 +35,7 @@ const actions = {
   FAMILY_STATS: 'FAMILY_STATS',
   FAMILY_RECENT: 'FAMILY_RECENT',
   FAMILY_RECENT_NEXT: 'FAMILY_RECENT_NEXT',
+  FAMILY_RENAME: 'FAMILY_RENAME',
   CLEAR_MONTH_EXPENSES: 'CLEAR_MONTH_EXPENSES',
   CLEAR_ALL_EXPENSES: 'CLEAR_ALL_EXPENSES',
   CHANGE_EXPENSE_CATEGORY: 'CHANGE_EXPENSE_CATEGORY',
@@ -378,6 +379,36 @@ function familyOwnerKeyboard(members, ownerUserId) {
   return Markup.inlineKeyboard(rows);
 }
 
+function familyInfoKeyboard(context, ownerUserId) {
+  const rows = [
+    [
+      Markup.button.callback('Семейная статистика', actions.FAMILY_STATS),
+      Markup.button.callback('Последние семейные траты', actions.FAMILY_RECENT),
+    ],
+  ];
+
+  if (context?.currentMember.role === 'OWNER') {
+    rows.push([Markup.button.callback('Переименовать', actions.FAMILY_RENAME)]);
+
+    const removeRows = context.members
+      .filter((member) => member.userId !== ownerUserId && member.role !== 'OWNER')
+      .map((member) => {
+        return [
+          Markup.button.callback(
+            `Удалить ${getUserButtonName(member.user)}`,
+            `FAMILY_REMOVE:${member.id}`
+          ),
+        ];
+      });
+
+    rows.push(...removeRows);
+  }
+
+  rows.push([Markup.button.callback('Главное меню', 'SHOW_MENU')]);
+
+  return Markup.inlineKeyboard(rows);
+}
+
 function accountsManageKeyboard() {
   return Markup.inlineKeyboard([
     [Markup.button.callback('Добавить счет', actions.ACCOUNT_ADD_HELP)],
@@ -521,6 +552,7 @@ module.exports = {
   editExpenseFieldKeyboard,
   editExpenseListKeyboard,
   familyStatsManageKeyboard,
+  familyInfoKeyboard,
   familyOwnerKeyboard,
   incomeCategoryKeyboard,
   mainMenuKeyboard,
