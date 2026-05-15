@@ -29,6 +29,13 @@ function getCurrentWeekRange(now = new Date()) {
   return { start, end };
 }
 
+function getLast30DaysRange(now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29, 0, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+
+  return { start, end };
+}
+
 function getPreviousWeekRange(now = new Date()) {
   const currentWeek = getCurrentWeekRange(now);
   const start = new Date(currentWeek.start);
@@ -54,6 +61,7 @@ module.exports = {
   formatDateTime,
   getCurrentMonthRange,
   getCurrentWeekRange,
+  getLast30DaysRange,
   getPreviousMonthRange,
   getPreviousWeekRange,
   getTodayRange,

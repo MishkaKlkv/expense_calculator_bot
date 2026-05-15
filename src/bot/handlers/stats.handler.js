@@ -22,6 +22,7 @@ const {
   sendCategoryExpensePicker,
   sendCategoryExpenses,
   sendExpensesExport,
+  sendLast30DaysChart,
   sendMonthChart,
   sendMonthComparison,
   sendTodayStats,
@@ -420,6 +421,11 @@ function registerStatsHandlers(bot) {
     await sendMonthChart(ctx);
   });
 
+  bot.action(actions.STATS_LAST_30_DAYS_CHART, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendLast30DaysChart(ctx);
+  });
+
   bot.action(actions.STATS_CATEGORY_EXPENSES, async (ctx) => {
     await ctx.answerCbQuery();
     await sendCategoryExpensePicker(ctx);
@@ -468,6 +474,11 @@ function registerStatsHandlers(bot) {
   bot.action(actions.STATS_FAMILY_CHART, async (ctx) => {
     await ctx.answerCbQuery();
     await sendMonthChart(ctx, { family: true });
+  });
+
+  bot.action(actions.STATS_FAMILY_LAST_30_DAYS_CHART, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendLast30DaysChart(ctx, { family: true });
   });
 
   bot.action(actions.STATS_FAMILY_CATEGORY_EXPENSES, async (ctx) => {

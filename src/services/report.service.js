@@ -14,6 +14,7 @@ const {
   formatDateTime,
   getCurrentMonthRange,
   getCurrentWeekRange,
+  getLast30DaysRange,
   getPreviousMonthRange,
   getTodayRange,
 } = require('../utils/date');
@@ -267,7 +268,12 @@ async function buildRubCategoryRows(rows) {
 }
 
 function buildAllCategoriesChartSvgContent(rows, options = {}) {
-  const { notes = [], title = 'Все категории за месяц' } = options;
+  const {
+    emptyText = 'Нет расходов за текущий месяц',
+    notes = [],
+    subtitle = 'Все категории, RUB',
+    title = 'Все категории за месяц',
+  } = options;
   const width = 1100;
   const rowHeight = 56;
   const topOffset = 160;
@@ -285,7 +291,7 @@ function buildAllCategoriesChartSvgContent(rows, options = {}) {
       `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
       '<rect width="100%" height="100%" fill="#ffffff" />',
       `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
-      '<text x="60" y="140" font-size="24" fill="#555">Нет расходов за текущий месяц</text>',
+      `<text x="60" y="140" font-size="24" fill="#555">${escapeXml(emptyText)}</text>`,
       '</svg>',
     ].join('\n');
   }
@@ -314,7 +320,7 @@ function buildAllCategoriesChartSvgContent(rows, options = {}) {
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${CHART_FONT_FAMILY}">`,
     '<rect width="100%" height="100%" fill="#ffffff" />',
     `<text x="60" y="82" font-size="36" font-weight="700" fill="#111">${escapeXml(title)}</text>`,
-    '<text x="60" y="122" font-size="21" fill="#555">Все категории, RUB</text>',
+    `<text x="60" y="122" font-size="21" fill="#555">${escapeXml(subtitle)}</text>`,
     rowElements,
     `<text x="60" y="${height - 16}" font-size="21" font-weight="700" fill="#111">Итого: ${escapeXml(formatChartAmount(total))}</text>`,
     noteElements,
@@ -322,14 +328,16 @@ function buildAllCategoriesChartSvgContent(rows, options = {}) {
   ].join('\n');
 }
 
-async function buildMonthChartPng(scope, options = {}) {
+async function buildCategoryChartPng(scope, range, options = {}) {
   const rows = await getCategoryStatsForRange({
     ...normalizeUserScope(scope),
-    range: getCurrentMonthRange(),
+    range,
   });
   const { chartRows, notes } = await buildRubCategoryRows(rows);
   const svg = buildAllCategoriesChartSvgContent(chartRows, {
+    emptyText: options.emptyText,
     notes,
+    subtitle: options.subtitle,
     title: options.title,
   });
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'expense-all-categories-'));
@@ -340,8 +348,25 @@ async function buildMonthChartPng(scope, options = {}) {
   return { filePath, tempDir };
 }
 
+async function buildMonthChartPng(scope, options = {}) {
+  return buildCategoryChartPng(scope, getCurrentMonthRange(), {
+    emptyText: 'Нет расходов за текущий месяц',
+    subtitle: 'Все категории, RUB',
+    ...options,
+  });
+}
+
+async function buildLast30DaysChartPng(scope, options = {}) {
+  return buildCategoryChartPng(scope, getLast30DaysRange(), {
+    emptyText: 'Нет расходов за последние 30 дней',
+    subtitle: 'Последние 30 дней, RUB',
+    ...options,
+  });
+}
+
 module.exports = {
   CATEGORY_EXPENSES_PAGE_SIZE,
+  buildLast30DaysChartPng,
   buildMonthChartPng,
   exportMonthExpenses,
   getCurrentMonthExpenseCategories,

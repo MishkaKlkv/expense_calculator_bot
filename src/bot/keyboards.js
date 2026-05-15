@@ -10,6 +10,7 @@ const actions = {
   STATS_COMPARE: 'STATS_COMPARE',
   STATS_TOP: 'STATS_TOP',
   STATS_CHART: 'STATS_CHART',
+  STATS_LAST_30_DAYS_CHART: 'STATS_LAST_30_DAYS_CHART',
   STATS_CATEGORY_EXPENSES: 'STATS_CATEGORY_EXPENSES',
   STATS_CATEGORY_EXPENSES_NEXT: 'STATS_CATEGORY_EXPENSES_NEXT',
   STATS_EXPORT_CSV: 'STATS_EXPORT_CSV',
@@ -21,6 +22,7 @@ const actions = {
   STATS_FAMILY_COMPARE: 'STATS_FAMILY_COMPARE',
   STATS_FAMILY_TOP: 'STATS_FAMILY_TOP',
   STATS_FAMILY_CHART: 'STATS_FAMILY_CHART',
+  STATS_FAMILY_LAST_30_DAYS_CHART: 'STATS_FAMILY_LAST_30_DAYS_CHART',
   STATS_FAMILY_CATEGORY_EXPENSES: 'STATS_FAMILY_CATEGORY_EXPENSES',
   STATS_FAMILY_CATEGORY_EXPENSES_NEXT: 'STATS_FAMILY_CATEGORY_EXPENSES_NEXT',
   STATS_FAMILY_EXPORT_CSV: 'STATS_FAMILY_EXPORT_CSV',
@@ -500,6 +502,7 @@ function statsManageKeyboard() {
       Markup.button.callback('Топ трат', actions.STATS_TOP),
       Markup.button.callback('График расходов', actions.STATS_CHART),
     ],
+    [Markup.button.callback('За 30 дней', actions.STATS_LAST_30_DAYS_CHART)],
     [Markup.button.callback('Траты по категории', actions.STATS_CATEGORY_EXPENSES)],
     [
       Markup.button.callback('CSV', actions.STATS_EXPORT_CSV),
@@ -523,6 +526,7 @@ function familyStatsManageKeyboard() {
       Markup.button.callback('Топ трат', actions.STATS_FAMILY_TOP),
       Markup.button.callback('График расходов', actions.STATS_FAMILY_CHART),
     ],
+    [Markup.button.callback('За 30 дней', actions.STATS_FAMILY_LAST_30_DAYS_CHART)],
     [Markup.button.callback('Траты по категории', actions.STATS_FAMILY_CATEGORY_EXPENSES)],
     [
       Markup.button.callback('CSV', actions.STATS_FAMILY_EXPORT_CSV),

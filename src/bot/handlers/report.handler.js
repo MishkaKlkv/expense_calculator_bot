@@ -1,6 +1,7 @@
 const fs = require('fs');
 const {
   CATEGORY_EXPENSES_PAGE_SIZE,
+  buildLast30DaysChartPng,
   buildMonthChartPng,
   exportMonthExpenses,
   getCurrentMonthExpenseCategories,
@@ -300,6 +301,26 @@ async function sendMonthChart(ctx, options = {}) {
   }
 }
 
+async function sendLast30DaysChart(ctx, options = {}) {
+  const reportScope = await getExpenseReportScope(ctx, options);
+
+  if (!reportScope.ok) {
+    return;
+  }
+
+  const chart = await buildLast30DaysChartPng(reportScope.scope, {
+    title: options.family ? 'Семейные расходы за 30 дней' : 'Расходы за 30 дней',
+  });
+
+  try {
+    await ctx.replyWithPhoto({
+      source: chart.filePath,
+    });
+  } finally {
+    await cleanupTemp(chart.tempDir);
+  }
+}
+
 function registerReportHandlers(bot) {
   bot.command('today', sendTodayStats);
   bot.command('week', sendWeekStats);
@@ -316,6 +337,7 @@ module.exports = {
   sendCategoryExpensePicker,
   sendCategoryExpenses,
   sendExpensesExport,
+  sendLast30DaysChart,
   sendMonthChart,
   sendMonthComparison,
   sendTodayStats,
