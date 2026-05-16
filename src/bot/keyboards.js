@@ -258,9 +258,6 @@ function quickEditRows(transactionId) {
 function afterExpenseKeyboard(category, transactionId) {
   return Markup.inlineKeyboard([
     ...quickEditRows(transactionId),
-    ...(transactionId
-      ? [[Markup.button.callback('Другая категория', `QUICK_EDIT_CATEGORY:${transactionId}`)]]
-      : []),
     [Markup.button.callback(`Добавить еще в ${category}`, `${actions.REPEAT_CATEGORY}:${category}`)],
     [Markup.button.callback('Добавить в другую категорию', actions.CHANGE_EXPENSE_CATEGORY)],
     [Markup.button.callback('Главное меню', 'SHOW_MENU')],
