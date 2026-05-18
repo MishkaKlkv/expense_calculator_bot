@@ -25,6 +25,8 @@ const actions = {
   STATS_FAMILY_TOP: 'STATS_FAMILY_TOP',
   STATS_FAMILY_CHART: 'STATS_FAMILY_CHART',
   STATS_FAMILY_LAST_30_DAYS_CHART: 'STATS_FAMILY_LAST_30_DAYS_CHART',
+  STATS_FAMILY_DAILY_EXPENSES: 'STATS_FAMILY_DAILY_EXPENSES',
+  STATS_FAMILY_DAILY_EXPENSES_NEXT: 'STATS_FAMILY_DAILY_EXPENSES_NEXT',
   STATS_FAMILY_CATEGORY_EXPENSES: 'STATS_FAMILY_CATEGORY_EXPENSES',
   STATS_FAMILY_CATEGORY_EXPENSES_NEXT: 'STATS_FAMILY_CATEGORY_EXPENSES_NEXT',
   STATS_FAMILY_EXPORT_CSV: 'STATS_FAMILY_EXPORT_CSV',
@@ -486,9 +488,13 @@ function categoryExpensesNextKeyboard(nextOffset, category, options = {}) {
   ]);
 }
 
-function dailyExpensesKeyboard(nextOffset) {
+function dailyExpensesKeyboard(nextOffset, options = {}) {
+  const action = options.family
+    ? actions.STATS_FAMILY_DAILY_EXPENSES_NEXT
+    : actions.STATS_DAILY_EXPENSES_NEXT;
+
   return Markup.inlineKeyboard([
-    [Markup.button.callback('Следующие 10', `${actions.STATS_DAILY_EXPENSES_NEXT}:${nextOffset}`)],
+    [Markup.button.callback('Следующие 10', `${action}:${nextOffset}`)],
   ]);
 }
 
@@ -534,7 +540,10 @@ function familyStatsManageKeyboard() {
       Markup.button.callback('Топ трат', actions.STATS_FAMILY_TOP),
       Markup.button.callback('График расходов', actions.STATS_FAMILY_CHART),
     ],
-    [Markup.button.callback('За 30 дней', actions.STATS_FAMILY_LAST_30_DAYS_CHART)],
+    [
+      Markup.button.callback('За 30 дней', actions.STATS_FAMILY_LAST_30_DAYS_CHART),
+      Markup.button.callback('Расходы по дням', actions.STATS_FAMILY_DAILY_EXPENSES),
+    ],
     [Markup.button.callback('Траты по категории', actions.STATS_FAMILY_CATEGORY_EXPENSES)],
     [
       Markup.button.callback('CSV', actions.STATS_FAMILY_EXPORT_CSV),

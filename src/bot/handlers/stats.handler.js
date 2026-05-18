@@ -143,14 +143,15 @@ function formatDailyTotals(totals) {
   return totals.map((total) => formatMoney(total.amount, total.currency)).join(', ');
 }
 
-function formatDailyExpenseStats(rows, offset = 0) {
+function formatDailyExpenseStats(rows, offset = 0, options = {}) {
   const rangeText =
     offset === 0
       ? 'Последние 10 дней'
       : `Дни ${offset + 1}-${offset + rows.length} от сегодняшнего`;
+  const title = options.family ? 'Семейные расходы по дням' : 'Расходы по дням';
 
   return [
-    'Расходы по дням',
+    title,
     rangeText,
     '',
     ...rows.map((row) => `${formatDailyDate(row.dateKey)}: ${formatDailyTotals(row.totals)}`),
@@ -410,6 +411,28 @@ async function sendDailyExpenseStats(ctx, offset = 0) {
   );
 }
 
+async function sendFamilyDailyExpenseStats(ctx, offset = 0) {
+  const context = await getFamilyStatsContext(ctx);
+
+  if (!context) {
+    return;
+  }
+
+  const requestedOffset = normalizeOffset(offset);
+  const rows = await getDailyExpenseTotals(
+    { userIds: context.memberUserIds },
+    {
+      limit: DAILY_EXPENSES_PAGE_SIZE,
+      offset: requestedOffset,
+    }
+  );
+
+  await ctx.reply(
+    formatDailyExpenseStats(rows, requestedOffset, { family: true }),
+    dailyExpensesKeyboard(requestedOffset + DAILY_EXPENSES_PAGE_SIZE, { family: true })
+  );
+}
+
 async function sendWeeklyReport(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   await resetDialogState(user.id);
@@ -548,6 +571,19 @@ function registerStatsHandlers(bot) {
     await ctx.answerCbQuery();
     await sendLast30DaysChart(ctx, { family: true });
   });
+
+  bot.action(actions.STATS_FAMILY_DAILY_EXPENSES, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendFamilyDailyExpenseStats(ctx);
+  });
+
+  bot.action(
+    new RegExp(`^${actions.STATS_FAMILY_DAILY_EXPENSES_NEXT}:(\\d+)$`, 'u'),
+    async (ctx) => {
+      await ctx.answerCbQuery();
+      await sendFamilyDailyExpenseStats(ctx, ctx.match[1]);
+    }
+  );
 
   bot.action(actions.STATS_FAMILY_CATEGORY_EXPENSES, async (ctx) => {
     await ctx.answerCbQuery();
