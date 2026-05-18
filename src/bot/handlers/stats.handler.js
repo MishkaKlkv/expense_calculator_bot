@@ -1,5 +1,6 @@
 const {
   actions,
+  dailyExpensesKeyboard,
   familyStatsManageKeyboard,
   replyLabels,
   statsManageKeyboard,
@@ -9,6 +10,7 @@ const {
   getCurrentMonthBalance,
   getCurrentMonthIncomeStats,
   getCurrentMonthStatsForUsers,
+  getDailyExpenseTotals,
   getPreviousMonthBalance,
   getPreviousMonthStatsForUsers,
 } = require('../../services/stats.service');
@@ -30,6 +32,18 @@ const {
   sendWeekStats,
 } = require('./report.handler');
 const { formatMoney } = require('../../utils/money');
+
+const DAILY_EXPENSES_PAGE_SIZE = 10;
+
+function normalizeOffset(value) {
+  const offset = Number(value);
+
+  if (!Number.isInteger(offset) || offset < 0) {
+    return 0;
+  }
+
+  return offset;
+}
 
 function formatCategoryRows(rows, emptyText) {
   if (rows.length === 0) {
@@ -112,6 +126,35 @@ function formatIncomeStats(rows) {
   });
 
   return `Доходы за текущий месяц:\n\n${lines.join('\n')}\n\nИтого:\n${totalLines.join('\n')}`;
+}
+
+function formatDailyDate(dateKey) {
+  const date = new Date(`${dateKey}T12:00:00.000Z`);
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'Europe/Moscow',
+    weekday: 'short',
+  }).format(date);
+}
+
+function formatDailyTotals(totals) {
+  return totals.map((total) => formatMoney(total.amount, total.currency)).join(', ');
+}
+
+function formatDailyExpenseStats(rows, offset = 0) {
+  const rangeText =
+    offset === 0
+      ? 'Последние 10 дней'
+      : `Дни ${offset + 1}-${offset + rows.length} от сегодняшнего`;
+
+  return [
+    'Расходы по дням',
+    rangeText,
+    '',
+    ...rows.map((row) => `${formatDailyDate(row.dateKey)}: ${formatDailyTotals(row.totals)}`),
+  ].join('\n');
 }
 
 function sumRowsByCurrency(rows) {
@@ -352,6 +395,21 @@ async function sendMonthIncomeStats(ctx) {
   await ctx.reply(formatIncomeStats(stats));
 }
 
+async function sendDailyExpenseStats(ctx, offset = 0) {
+  const user = await upsertTelegramUser(ctx.from);
+  await resetDialogState(user.id);
+  const requestedOffset = normalizeOffset(offset);
+  const rows = await getDailyExpenseTotals(user.id, {
+    limit: DAILY_EXPENSES_PAGE_SIZE,
+    offset: requestedOffset,
+  });
+
+  await ctx.reply(
+    formatDailyExpenseStats(rows, requestedOffset),
+    dailyExpensesKeyboard(requestedOffset + DAILY_EXPENSES_PAGE_SIZE)
+  );
+}
+
 async function sendWeeklyReport(ctx) {
   const user = await upsertTelegramUser(ctx.from);
   await resetDialogState(user.id);
@@ -424,6 +482,16 @@ function registerStatsHandlers(bot) {
   bot.action(actions.STATS_LAST_30_DAYS_CHART, async (ctx) => {
     await ctx.answerCbQuery();
     await sendLast30DaysChart(ctx);
+  });
+
+  bot.action(actions.STATS_DAILY_EXPENSES, async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendDailyExpenseStats(ctx);
+  });
+
+  bot.action(new RegExp(`^${actions.STATS_DAILY_EXPENSES_NEXT}:(\\d+)$`, 'u'), async (ctx) => {
+    await ctx.answerCbQuery();
+    await sendDailyExpenseStats(ctx, ctx.match[1]);
   });
 
   bot.action(actions.STATS_CATEGORY_EXPENSES, async (ctx) => {

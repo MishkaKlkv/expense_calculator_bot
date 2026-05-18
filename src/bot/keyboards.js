@@ -11,6 +11,8 @@ const actions = {
   STATS_TOP: 'STATS_TOP',
   STATS_CHART: 'STATS_CHART',
   STATS_LAST_30_DAYS_CHART: 'STATS_LAST_30_DAYS_CHART',
+  STATS_DAILY_EXPENSES: 'STATS_DAILY_EXPENSES',
+  STATS_DAILY_EXPENSES_NEXT: 'STATS_DAILY_EXPENSES_NEXT',
   STATS_CATEGORY_EXPENSES: 'STATS_CATEGORY_EXPENSES',
   STATS_CATEGORY_EXPENSES_NEXT: 'STATS_CATEGORY_EXPENSES_NEXT',
   STATS_EXPORT_CSV: 'STATS_EXPORT_CSV',
@@ -484,6 +486,12 @@ function categoryExpensesNextKeyboard(nextOffset, category, options = {}) {
   ]);
 }
 
+function dailyExpensesKeyboard(nextOffset) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('Следующие 10', `${actions.STATS_DAILY_EXPENSES_NEXT}:${nextOffset}`)],
+  ]);
+}
+
 function statsManageKeyboard() {
   return Markup.inlineKeyboard([
     [Markup.button.callback('Семейная статистика', actions.STATS_FAMILY_MONTH)],
@@ -499,7 +507,10 @@ function statsManageKeyboard() {
       Markup.button.callback('Топ трат', actions.STATS_TOP),
       Markup.button.callback('График расходов', actions.STATS_CHART),
     ],
-    [Markup.button.callback('За 30 дней', actions.STATS_LAST_30_DAYS_CHART)],
+    [
+      Markup.button.callback('За 30 дней', actions.STATS_LAST_30_DAYS_CHART),
+      Markup.button.callback('Расходы по дням', actions.STATS_DAILY_EXPENSES),
+    ],
     [Markup.button.callback('Траты по категории', actions.STATS_CATEGORY_EXPENSES)],
     [
       Markup.button.callback('CSV', actions.STATS_EXPORT_CSV),
@@ -544,6 +555,7 @@ module.exports = {
   categoryTypeKeyboard,
   categoryKeyboard,
   categoryNamesKeyboard,
+  dailyExpensesKeyboard,
   clearExpensesConfirmKeyboard,
   deleteAccountConfirmKeyboard,
   deleteAccountNumberKeyboard,
