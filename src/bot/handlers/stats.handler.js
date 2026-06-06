@@ -8,11 +8,11 @@ const {
 const { upsertTelegramUser } = require('../../repositories/user.repository');
 const {
   getCurrentMonthBalance,
+  getCurrentMonthBalanceForUsers,
   getCurrentMonthIncomeStats,
-  getCurrentMonthStatsForUsers,
   getDailyExpenseTotals,
   getPreviousMonthBalance,
-  getPreviousMonthStatsForUsers,
+  getPreviousMonthBalanceForUsers,
 } = require('../../services/stats.service');
 const { getFamilyContext } = require('../../services/family.service');
 const { buildWeeklyReport } = require('../../services/weeklyReport.service');
@@ -91,18 +91,6 @@ function formatStats({ expenses, incomes }, title = 'Статистика за �
     'Доходы:',
     incomeStats.lines.join('\n'),
     ...(incomeStats.totals.length > 0 ? ['', `Итого доходов: ${incomeStats.totals.join(', ')}`] : []),
-  ].join('\n');
-}
-
-function formatExpenseOnlyStats(rows, title) {
-  const expenseStats = formatCategoryRows(rows, 'Расходов пока нет.');
-
-  return [
-    title,
-    '',
-    'Расходы:',
-    expenseStats.lines.join('\n'),
-    ...(expenseStats.totals.length > 0 ? ['', `Итого расходов: ${expenseStats.totals.join(', ')}`] : []),
   ].join('\n');
 }
 
@@ -354,10 +342,10 @@ async function sendFamilyMonthStats(ctx) {
     return;
   }
 
-  const rows = await getCurrentMonthStatsForUsers(context.memberUserIds);
+  const stats = await getCurrentMonthBalanceForUsers(context.memberUserIds);
 
   await ctx.reply(
-    formatExpenseOnlyStats(rows, 'Семейные расходы за текущий месяц'),
+    formatStats(stats, 'Семейная статистика за текущий месяц'),
     familyStatsManageKeyboard()
   );
 }
@@ -369,10 +357,10 @@ async function sendFamilyPreviousMonthStats(ctx) {
     return;
   }
 
-  const rows = await getPreviousMonthStatsForUsers(context.memberUserIds);
+  const stats = await getPreviousMonthBalanceForUsers(context.memberUserIds);
 
   await ctx.reply(
-    formatExpenseOnlyStats(rows, 'Семейные расходы за прошлый месяц'),
+    formatStats(stats, 'Семейная статистика за прошлый месяц'),
     familyStatsManageKeyboard()
   );
 }

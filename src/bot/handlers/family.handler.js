@@ -14,7 +14,7 @@ const {
   renameFamily,
 } = require('../../services/family.service');
 const {
-  getCurrentMonthStatsForUsers,
+  getCurrentMonthBalanceForUsers,
   getRecentExpensesForUsers,
 } = require('../../services/stats.service');
 const {
@@ -87,9 +87,12 @@ function formatFamilyInfo(context) {
   ].join('\n');
 }
 
-function formatStats(rows) {
+function formatCategoryRows(rows, emptyText) {
   if (rows.length === 0) {
-    return 'В семейном счете за текущий месяц расходов пока нет.';
+    return {
+      lines: [emptyText],
+      totals: [],
+    };
   }
 
   const totalsByCurrency = new Map();
@@ -106,9 +109,28 @@ function formatStats(rows) {
     return formatMoney(amount, currency);
   });
 
-  return `Семейные расходы за текущий месяц:\n\n${lines.join(
-    '\n'
-  )}\n\nИтого:\n${totalLines.join('\n')}`;
+  return { lines, totals: totalLines };
+}
+
+function formatStats({ expenses, incomes }) {
+  if (expenses.length === 0 && incomes.length === 0) {
+    return 'В семейном счете за текущий месяц операций пока нет.';
+  }
+
+  const expenseStats = formatCategoryRows(expenses, 'Расходов пока нет.');
+  const incomeStats = formatCategoryRows(incomes, 'Доходов пока нет.');
+
+  return [
+    'Семейная статистика за текущий месяц',
+    '',
+    'Расходы:',
+    expenseStats.lines.join('\n'),
+    ...(expenseStats.totals.length > 0 ? ['', `Итого расходов: ${expenseStats.totals.join(', ')}`] : []),
+    '',
+    'Доходы:',
+    incomeStats.lines.join('\n'),
+    ...(incomeStats.totals.length > 0 ? ['', `Итого доходов: ${incomeStats.totals.join(', ')}`] : []),
+  ].join('\n');
 }
 
 function formatRecentExpenses(expenses, offset = 0) {
@@ -187,7 +209,7 @@ async function sendFamilyStats(ctx) {
     return;
   }
 
-  const stats = await getCurrentMonthStatsForUsers(context.memberUserIds);
+  const stats = await getCurrentMonthBalanceForUsers(context.memberUserIds);
   await ctx.reply(formatStats(stats), familyStatsManageKeyboard());
 }
 

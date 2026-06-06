@@ -114,10 +114,10 @@ async function getPreviousMonthBalance(userId) {
   return getMonthBalanceForRange({ userId, start, end });
 }
 
-async function getMonthBalanceForRange({ userId, start, end }) {
+async function getMonthBalanceForRange({ userId, userIds, start, end }) {
   const [expenses, incomes] = await Promise.all([
-    aggregateTransactionsByCategory({ userId, start, end, type: 'EXPENSE' }),
-    aggregateTransactionsByCategory({ userId, start, end, type: 'INCOME' }),
+    aggregateTransactionsByCategory({ userId, userIds, start, end, type: 'EXPENSE' }),
+    aggregateTransactionsByCategory({ userId, userIds, start, end, type: 'INCOME' }),
   ]);
 
   return { expenses, incomes };
@@ -129,10 +129,22 @@ async function getCurrentMonthStatsForUsers(userIds) {
   return aggregateExpensesByCategory({ userIds, start, end });
 }
 
+async function getCurrentMonthBalanceForUsers(userIds) {
+  const { start, end } = getCurrentMonthRange();
+
+  return getMonthBalanceForRange({ userIds, start, end });
+}
+
 async function getPreviousMonthStatsForUsers(userIds) {
   const { start, end } = getPreviousMonthRange();
 
   return aggregateExpensesByCategory({ userIds, start, end });
+}
+
+async function getPreviousMonthBalanceForUsers(userIds) {
+  const { start, end } = getPreviousMonthRange();
+
+  return getMonthBalanceForRange({ userIds, start, end });
 }
 
 async function getRecentExpenses(userId, limit = 10, offset = 0) {
@@ -170,11 +182,13 @@ async function getDailyExpenseTotals(scope, options = {}) {
 
 module.exports = {
   getCurrentMonthBalance,
+  getCurrentMonthBalanceForUsers,
   getCurrentMonthIncomeStats,
   getCurrentMonthStats,
   getCurrentMonthStatsForUsers,
   getDailyExpenseTotals,
   getPreviousMonthBalance,
+  getPreviousMonthBalanceForUsers,
   getPreviousMonthStatsForUsers,
   getRecentExpenses,
   getRecentExpensesForUsers,
