@@ -1,4 +1,4 @@
-const { getUsdToRubRate } = require('./exchangeRate.service');
+const { getGelToRubRate, getUsdToRubRate } = require('./exchangeRate.service');
 
 const YAHOO_CHART_URL = 'https://query1.finance.yahoo.com/v8/finance/chart';
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -78,8 +78,9 @@ async function getMarketRatesSnapshot() {
     return cachedSnapshot;
   }
 
-  const [usd, gold, oil, bitcoin] = await Promise.allSettled([
+  const [usd, gel, gold, oil, bitcoin] = await Promise.allSettled([
     getUsdToRubRate(),
+    getGelToRubRate(),
     fetchYahooPrice(marketSymbols.gold),
     fetchYahooPrice(marketSymbols.oil),
     fetchYahooPrice(marketSymbols.bitcoin),
@@ -88,12 +89,13 @@ async function getMarketRatesSnapshot() {
   const snapshot = {
     bitcoin: settle(bitcoin),
     fetchedAt: now,
+    gel: settle(gel),
     gold: settle(gold),
     oil: settle(oil),
     usd: settle(usd),
   };
 
-  if ([snapshot.bitcoin, snapshot.gold, snapshot.oil, snapshot.usd].some((rate) => rate.ok)) {
+  if ([snapshot.bitcoin, snapshot.gel, snapshot.gold, snapshot.oil, snapshot.usd].some((rate) => rate.ok)) {
     cachedSnapshot = snapshot;
   }
 

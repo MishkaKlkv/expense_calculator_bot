@@ -14,7 +14,7 @@ function normalizeCurrency(value) {
 
 function parseExpenseMessage(text) {
   const input = text.trim().replace(/\s+/g, ' ');
-  const match = input.match(/(.+?)\s+(\d+(?:[.,]\d{1,2})?)\s*([a-zA-Zа-яА-ЯёЁ₽$]+)?$/u);
+  const match = input.match(/(.+?)\s+(\d+(?:[.,]\d{1,2})?)\s*([a-zA-Zа-яА-ЯёЁ₽$₾]+)?$/u);
 
   if (!match) {
     return null;
@@ -37,7 +37,7 @@ function parseExpenseMessage(text) {
 
 function parseAmountWithCurrency(text, defaultCurrency = 'RUB') {
   const input = text.trim().replace(/\s+/g, ' ');
-  const match = input.match(/^(\d+(?:[.,]\d{1,2})?)\s*([a-zA-Zа-яА-ЯёЁ₽$]+)?$/u);
+  const match = input.match(/^(\d+(?:[.,]\d{1,2})?)\s*([a-zA-Zа-яА-ЯёЁ₽$₾]+)?$/u);
 
   if (!match) {
     return null;

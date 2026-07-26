@@ -1,23 +1,26 @@
 const CBR_DAILY_XML_URL = 'https://www.cbr.ru/scripts/XML_daily.asp';
-const USD_CBR_ID = 'R01235';
+const CBR_CURRENCY_IDS = {
+  GEL: 'R01210',
+  USD: 'R01235',
+};
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
-let cachedUsdRate = null;
+const cachedRates = new Map();
 
 function parseCbrNumber(value) {
   return Number(value.replace(',', '.'));
 }
 
-function parseUsdRateFromCbrXml(xml) {
-  const usdBlockMatch = xml.match(
-    new RegExp(`<Valute[^>]*ID="${USD_CBR_ID}"[^>]*>[\\s\\S]*?<\\/Valute>`, 'u')
+function parseCbrRateFromXml(xml, cbrId) {
+  const currencyBlockMatch = xml.match(
+    new RegExp(`<Valute[^>]*ID="${cbrId}"[^>]*>[\\s\\S]*?<\\/Valute>`, 'u')
   );
 
-  if (!usdBlockMatch) {
+  if (!currencyBlockMatch) {
     return null;
   }
 
-  const block = usdBlockMatch[0];
+  const block = currencyBlockMatch[0];
   const nominalMatch = block.match(/<Nominal>(\d+)<\/Nominal>/u);
   const valueMatch = block.match(/<Value>([\d,]+)<\/Value>/u);
   const dateMatch = xml.match(/<ValCurs[^>]*Date="([^"]+)"/u);
@@ -40,11 +43,22 @@ function parseUsdRateFromCbrXml(xml) {
   };
 }
 
-async function getUsdToRubRate() {
-  const now = Date.now();
+function parseUsdRateFromCbrXml(xml) {
+  return parseCbrRateFromXml(xml, CBR_CURRENCY_IDS.USD);
+}
 
-  if (cachedUsdRate && now - cachedUsdRate.fetchedAt < CACHE_TTL_MS) {
-    return cachedUsdRate;
+async function getCurrencyToRubRate(currency) {
+  const cbrId = CBR_CURRENCY_IDS[currency];
+
+  if (!cbrId) {
+    throw new Error(`Unsupported CBR currency: ${currency}`);
+  }
+
+  const now = Date.now();
+  const cachedRate = cachedRates.get(currency);
+
+  if (cachedRate && now - cachedRate.fetchedAt < CACHE_TTL_MS) {
+    return cachedRate;
   }
 
   const response = await fetch(CBR_DAILY_XML_URL);
@@ -54,21 +68,33 @@ async function getUsdToRubRate() {
   }
 
   const xml = await response.text();
-  const parsed = parseUsdRateFromCbrXml(xml);
+  const parsed = parseCbrRateFromXml(xml, cbrId);
 
   if (!parsed) {
-    throw new Error('Failed to parse USD rate from CBR XML');
+    throw new Error(`Failed to parse ${currency} rate from CBR XML`);
   }
 
-  cachedUsdRate = {
+  const rate = {
     ...parsed,
     fetchedAt: now,
   };
+  cachedRates.set(currency, rate);
 
-  return cachedUsdRate;
+  return rate;
+}
+
+function getUsdToRubRate() {
+  return getCurrencyToRubRate('USD');
+}
+
+function getGelToRubRate() {
+  return getCurrencyToRubRate('GEL');
 }
 
 module.exports = {
+  getCurrencyToRubRate,
+  getGelToRubRate,
   getUsdToRubRate,
+  parseCbrRateFromXml,
   parseUsdRateFromCbrXml,
 };

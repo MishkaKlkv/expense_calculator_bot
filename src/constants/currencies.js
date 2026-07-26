@@ -1,4 +1,4 @@
-const SUPPORTED_CURRENCIES = ['RUB', 'USD'];
+const SUPPORTED_CURRENCIES = ['RUB', 'USD', 'GEL'];
 
 const CURRENCY_ALIASES = {
   rub: 'RUB',
@@ -23,6 +23,10 @@ const CURRENCY_ALIASES = {
   доллара: 'USD',
   долларов: 'USD',
   '$': 'USD',
+  gel: 'GEL',
+  лари: 'GEL',
+  лар: 'GEL',
+  '₾': 'GEL',
 };
 
 module.exports = { CURRENCY_ALIASES, SUPPORTED_CURRENCIES };

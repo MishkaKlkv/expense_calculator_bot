@@ -41,6 +41,11 @@ The Prisma model `Expense` stores both expenses and incomes:
 - Income reports and income editing must keep filtering by `type: 'INCOME'`.
 - Cashback is user-facing income in the `Кешбек` income category, not a per-expense field in current flows.
 
+## Currency Rules
+
+- Supported transaction currencies are defined together in `prisma/schema.prisma` and `src/constants/currencies.js`.
+- Adding a currency requires a Prisma enum migration, input aliases in `CURRENCY_ALIASES`, and an exchange-rate integration when it should appear in `/exchange_rate`.
+
 ## Feature Ownership
 
 - Expenses and quick parsing: `expense.handler.js`, `expense.service.js`, `parser.service.js`, `autoCategory.service.js`.
@@ -62,4 +67,3 @@ When a task is ambiguous:
 4. Preserve personal vs family scope intentionally. Use `userId` for personal views and `userIds` for family views.
 5. Reset `DialogState` after completed, canceled, or interrupted multi-step flows.
 6. Update `AGENTS.MD` or skill files if the task changes architecture or workflow rules.
-

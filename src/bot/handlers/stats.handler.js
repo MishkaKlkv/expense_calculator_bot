@@ -18,7 +18,7 @@ const { getFamilyContext } = require('../../services/family.service');
 const { buildWeeklyReport } = require('../../services/weeklyReport.service');
 const { getAccounts, summarizeAccounts } = require('../../services/account.service');
 const { resetDialogState } = require('../../services/dialogState.service');
-const { getUsdToRubRate } = require('../../services/exchangeRate.service');
+const { getCurrencyToRubRate } = require('../../services/exchangeRate.service');
 const { getMarketRatesSnapshot } = require('../../services/marketRates.service');
 const {
   sendCategoryExpensePicker,
@@ -158,21 +158,25 @@ function sumRowsByCurrency(rows) {
   return totals;
 }
 
-function hasUsdTotals(...totalsMaps) {
-  return totalsMaps.some((totals) => Number(totals.get('USD') || 0) !== 0);
+function getForeignCurrencies(...totalsMaps) {
+  return Array.from(new Set(totalsMaps.flatMap((totals) => Array.from(totals.keys())))).filter(
+    (currency) => currency !== 'RUB'
+  );
 }
 
-function convertTotalsToRub(totals, usdRate) {
+function convertTotalsToRub(totals, rates) {
   return Array.from(totals.entries()).reduce((sum, [currency, amount]) => {
     if (currency === 'RUB') {
       return sum + amount;
     }
 
-    if (currency === 'USD') {
-      return sum + amount * usdRate.value;
+    const rate = rates.get(currency);
+
+    if (!rate) {
+      throw new Error(`Missing RUB conversion rate for ${currency}`);
     }
 
-    return sum;
+    return sum + amount * rate.value;
   }, 0);
 }
 
@@ -247,6 +251,7 @@ function formatExchangeRates(snapshot) {
     `🥇 Золото ${formatUsdMarketValue(snapshot.gold)}.`,
     `🛢️ Нефть ${formatUsdMarketValue(snapshot.oil)}.`,
     `💵 Доллар ${formatRubMarketValue(snapshot.usd)}`,
+    `🇬🇪 Грузинский лари ${formatRubMarketValue(snapshot.gel)}`,
     `💵 Биткоин ${formatUsdMarketValue(snapshot.bitcoin)}`,
   ].join('\n');
 }
@@ -273,7 +278,9 @@ async function formatBalance({ expenses, incomes }, accounts = []) {
 
   const resultLines = ['Баланс за текущий месяц', '', ...lines];
 
-  if (!hasUsdTotals(expenseTotals, incomeTotals)) {
+  const foreignCurrencies = getForeignCurrencies(expenseTotals, incomeTotals);
+
+  if (foreignCurrencies.length === 0) {
     const incomeRub = incomeTotals.get('RUB') || 0;
     const expenseRub = expenseTotals.get('RUB') || 0;
 
@@ -287,19 +294,30 @@ async function formatBalance({ expenses, incomes }, accounts = []) {
   }
 
   try {
-    const usdRate = await getUsdToRubRate();
-    const incomeRub = convertTotalsToRub(incomeTotals, usdRate);
-    const expenseRub = convertTotalsToRub(expenseTotals, usdRate);
+    const rates = new Map(
+      await Promise.all(
+        foreignCurrencies.map(async (currency) => [currency, await getCurrencyToRubRate(currency)])
+      )
+    );
+    const incomeRub = convertTotalsToRub(incomeTotals, rates);
+    const expenseRub = convertTotalsToRub(expenseTotals, rates);
+    const rateLines = foreignCurrencies.map((currency) => {
+      const rate = rates.get(currency);
+
+      return `Курс ${currency}: ${formatMoney(rate.value, 'RUB')}${
+        rate.date ? ` (${rate.date}, ${rate.source})` : ''
+      }`;
+    });
 
     resultLines.push(
       '',
       `Итого доходов в RUB: ${formatMoney(incomeRub, 'RUB')}`,
       `Итоговый баланс в RUB: ${formatMoney(incomeRub - expenseRub, 'RUB')}`,
-      `Курс USD: ${formatMoney(usdRate.value, 'RUB')}${usdRate.date ? ` (${usdRate.date}, ${usdRate.source})` : ''}`
+      ...rateLines
     );
   } catch (error) {
-    console.error('[stats:balance] failed to fetch USD rate', error);
-    resultLines.push('', 'Итого в RUB не посчитал: не удалось получить текущий курс USD.');
+    console.error('[stats:balance] failed to fetch currency rates', error);
+    resultLines.push('', 'Итого в RUB не посчитал: не удалось получить текущие курсы валют.');
   }
 
   resultLines.push('', formatAccountsSummary(accounts));

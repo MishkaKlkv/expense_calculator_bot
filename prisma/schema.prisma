@@ -10,6 +10,7 @@ generator client {
 enum Currency {
   RUB
   USD
+  GEL
 }
 
 enum TransactionType {
